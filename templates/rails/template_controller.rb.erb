@@ -1,0 +1,70 @@
+class <%= c_plural %>Controller < ApplicationController
+  before_action :set_<%= singular %>, only: %i[ show edit update destroy ]
+
+  # GET /<%= plural %> or /<%= plural %>.json
+  def index
+    @<%= plural %> = <%= c_singular %>.all
+  end
+
+  # GET /<%= plural %>/1 or /<%= plural %>/1.json
+  def show
+  end
+
+  # GET /<%= plural %>/new
+  def new
+    @<%= singular %> = <%= c_singular %>.new
+  end
+
+  # GET /<%= plural %>/1/edit
+  def edit
+  end
+
+  # POST /<%= plural %> or /<%= plural %>.json
+  def create
+    @<%= singular %> = <%= c_singular %>.new(<%= singular %>_params)
+
+    respond_to do |format|
+      if @<%= singular %>.save
+        format.html { redirect_to <%= singular %>_url(@<%= singular %>), notice: "<%= singular %> was successfully created." }
+        format.json { render :show, status: :created, location: @<%= singular %> }
+      else
+        format.html { render :new, status: :unprocessable_entity }
+        format.json { render json: @<%= singular %>.errors, status: :unprocessable_entity }
+      end
+    end
+  end
+
+  # PATCH/PUT /<%= plural %>/1 or /<%= plural %>/1.json
+  def update
+    respond_to do |format|
+      if @<%= singular %>.update(<%= singular %>_params)
+        format.html { redirect_to <%= singular %>_url(@<%= singular %>), notice: "<%= singular %> was successfully updated." }
+        format.json { render :show, status: :ok, location: @<%= singular %> }
+      else
+        format.html { render :edit, status: :unprocessable_entity }
+        format.json { render json: @<%= singular %>.errors, status: :unprocessable_entity }
+      end
+    end
+  end
+
+  # DELETE /<%= plural %>/1 or /<%= plural %>/1.json
+  def destroy
+    <%= singular %>.destroy!
+
+    respond_to do |format|
+      format.html { redirect_to <%= plural %>_url, notice: "<%= singular %> was successfully destroyed." }
+      format.json { head :no_content }
+    end
+  end
+
+  private
+    # Use callbacks to share common setup or constraints between actions.
+    def set_<%= singular %>
+      @<%= singular %> = <%= c_singular %>.find(params[:id])
+    end
+
+    # Only allow a list of trusted parameters through.
+    def <%= singular %>_params
+      params.require(:<%= singular %>).permit(<%= attributes.map { |a| ":#{a}" }.join(', ') %>)
+    end
+end
