@@ -1,0 +1,10 @@
+<h1>Editing <%= singular %></h1>
+
+<%%= render "form", <%= singular %>: @<%= singular %> %>
+
+<br>
+
+<div>
+  <%%= link_to "Show this <%= singular %>", @<%= singular %> %> |
+  <%%= link_to "Back to <%= plural %>", <%= singular %>_path %>
+</div>

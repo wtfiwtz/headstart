@@ -1,0 +1,14 @@
+<p style="color: green"><%%= notice %></p>
+
+<h1><%= c_plural %></h1>
+
+<div id="<%= plural %>">
+  <%% @<%= plural %>.each do |<%= singular %>| %>
+    <%%= render <%= singular %> %>
+    <p>
+      <%%= link_to "Show this <%= singular %>", <%= singular %> %>
+    </p>
+  <%% end %>
+</div>
+
+<%%= link_to "New <%= singular %>", new_<%= singular %>_path %>

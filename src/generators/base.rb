@@ -24,9 +24,10 @@ module Tenant
     def generate
       puts "Generate models: #{self.model}"
       model.each do |m|
-        puts "Model: #{m.name}"
+        puts "*** Model: #{m.name} ***"
         generate_model(m)
         generate_controller(m)
+        generate_view(m)
       end
     end
 
@@ -35,6 +36,10 @@ module Tenant
     end
 
     def generate_controller(c)
+      raise "Not implemented"
+    end
+
+    def generate_view(c)
       raise "Not implemented"
     end
 
