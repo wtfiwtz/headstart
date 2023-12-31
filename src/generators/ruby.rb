@@ -7,6 +7,13 @@ module Tenant
       @templates_path = "#{__dir__}/../../templates/rails"
     end
 
+    def setup_target
+      return if Dir.exist?("#{__dir__}/../../out/rails_app")
+      FileUtils.mkdir_p "#{__dir__}/../../out"
+      FileUtils.chdir "#{__dir__}/../../out"
+      system "rails new rails_app"
+    end
+
     def generate_model(m)
       base_path = "#{@rails_all_path}/app/models"
       FileUtils.mkdir_p base_path
