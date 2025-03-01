@@ -1,0 +1,218 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Dwelling Deployment Configuration",
+  "description": "Configuration schema for deploying Dwelling applications to cloud providers",
+  "type": "object",
+  "required": ["provider", "framework", "environment"],
+  "properties": {
+    "provider": {
+      "type": "string",
+      "description": "Cloud provider to deploy to",
+      "enum": ["aws", "azure", "gcp"]
+    },
+    "framework": {
+      "type": "string",
+      "description": "Infrastructure as code framework to use",
+      "enum": ["cdk", "cdktf"]
+    },
+    "environment": {
+      "type": "string",
+      "description": "Deployment environment",
+      "enum": ["development", "staging", "production"]
+    },
+    "region": {
+      "type": "string",
+      "description": "Cloud provider region to deploy to"
+    },
+    "application": {
+      "type": "object",
+      "description": "Application configuration",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Application name"
+        },
+        "containerImage": {
+          "type": "string",
+          "description": "Container image name"
+        },
+        "containerTag": {
+          "type": "string",
+          "description": "Container image tag"
+        },
+        "containerPort": {
+          "type": "integer",
+          "description": "Container port"
+        },
+        "healthCheckPath": {
+          "type": "string",
+          "description": "Health check path"
+        },
+        "cpu": {
+          "type": "integer",
+          "description": "CPU units"
+        },
+        "memory": {
+          "type": "integer",
+          "description": "Memory in MB"
+        },
+        "desiredCount": {
+          "type": "integer",
+          "description": "Desired instance count"
+        },
+        "autoscaling": {
+          "type": "object",
+          "description": "Autoscaling configuration",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable autoscaling"
+            },
+            "minCapacity": {
+              "type": "integer",
+              "description": "Minimum capacity"
+            },
+            "maxCapacity": {
+              "type": "integer",
+              "description": "Maximum capacity"
+            },
+            "cpuTargetUtilization": {
+              "type": "integer",
+              "description": "CPU target utilization percentage"
+            },
+            "memoryTargetUtilization": {
+              "type": "integer",
+              "description": "Memory target utilization percentage"
+            }
+          }
+        },
+        "environment": {
+          "type": "object",
+          "description": "Environment variables",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "secrets": {
+          "type": "object",
+          "description": "Secret environment variables",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "network": {
+      "type": "object",
+      "description": "Network configuration",
+      "properties": {
+        "vpcName": {
+          "type": "string",
+          "description": "VPC name"
+        },
+        "cidr": {
+          "type": "string",
+          "description": "CIDR block"
+        },
+        "azCount": {
+          "type": "integer",
+          "description": "Number of availability zones"
+        },
+        "publicSubnets": {
+          "type": "array",
+          "description": "Public subnet CIDR blocks",
+          "items": {
+            "type": "string"
+          }
+        },
+        "privateSubnets": {
+          "type": "array",
+          "description": "Private subnet CIDR blocks",
+          "items": {
+            "type": "string"
+          }
+        },
+        "databaseSubnets": {
+          "type": "array",
+          "description": "Database subnet CIDR blocks",
+          "items": {
+            "type": "string"
+          }
+        },
+        "enableNatGateway": {
+          "type": "boolean",
+          "description": "Enable NAT gateway"
+        },
+        "singleNatGateway": {
+          "type": "boolean",
+          "description": "Use a single NAT gateway"
+        }
+      }
+    },
+    "database": {
+      "type": "object",
+      "description": "Database configuration",
+      "properties": {
+        "engine": {
+          "type": "string",
+          "description": "Database engine",
+          "enum": ["postgres", "mysql", "sqlserver", "mongodb", "cosmosdb", "firestore"]
+        },
+        "engineVersion": {
+          "type": "string",
+          "description": "Database engine version"
+        },
+        "instanceClass": {
+          "type": "string",
+          "description": "Database instance class"
+        },
+        "allocatedStorage": {
+          "type": "integer",
+          "description": "Allocated storage in GB"
+        },
+        "multiAz": {
+          "type": "boolean",
+          "description": "Enable multi-AZ deployment"
+        },
+        "backupRetentionPeriod": {
+          "type": "integer",
+          "description": "Backup retention period in days"
+        },
+        "databaseName": {
+          "type": "string",
+          "description": "Database name"
+        },
+        "username": {
+          "type": "string",
+          "description": "Database username"
+        },
+        "port": {
+          "type": "integer",
+          "description": "Database port"
+        }
+      }
+    },
+    "monitoring": {
+      "type": "object",
+      "description": "Monitoring configuration",
+      "properties": {
+        "alarmEmail": {
+          "type": "string",
+          "description": "Email address for alarms"
+        },
+        "enableDashboard": {
+          "type": "boolean",
+          "description": "Enable dashboard"
+        },
+        "enableAlarms": {
+          "type": "boolean",
+          "description": "Enable alarms"
+        },
+        "logRetentionDays": {
+          "type": "integer",
+          "description": "Log retention period in days"
+        }
+      }
+    }
+  }
+} 

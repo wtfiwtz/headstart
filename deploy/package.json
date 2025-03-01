@@ -1,0 +1,62 @@
+{
+  "name": "dwelling-deployment",
+  "version": "1.0.0",
+  "description": "Multi-cloud deployment for Dwelling application using CDK and CDKTF",
+  "main": "bin/app.js",
+  "scripts": {
+    "build": "tsc",
+    "synth": "cdktf synth",
+    "compile": "tsc --pretty",
+    "watch": "tsc -w",
+    "test": "jest",
+    "upgrade": "npm i cdktf@latest cdktf-cli@latest",
+    "upgrade:next": "npm i cdktf@next cdktf-cli@next",
+    "deploy": "cdktf deploy --all",
+    "deploy:aws": "PROVIDER=aws FRAMEWORK=cdktf cdktf deploy --all",
+    "deploy:azure": "PROVIDER=azure FRAMEWORK=cdktf cdktf deploy --all",
+    "deploy:gcp": "PROVIDER=gcp FRAMEWORK=cdktf cdktf deploy --all",
+    "deploy:aws:cdk": "PROVIDER=aws FRAMEWORK=cdk cdk deploy --all",
+    "deploy:dev": "ENVIRONMENT=development cdktf deploy --all",
+    "deploy:staging": "ENVIRONMENT=staging cdktf deploy --all",
+    "deploy:prod": "ENVIRONMENT=production cdktf deploy --all",
+    "destroy": "cdktf destroy --all",
+    "destroy:aws": "PROVIDER=aws FRAMEWORK=cdktf cdktf destroy --all",
+    "destroy:azure": "PROVIDER=azure FRAMEWORK=cdktf cdktf destroy --all",
+    "destroy:gcp": "PROVIDER=gcp FRAMEWORK=cdktf cdktf destroy --all",
+    "destroy:dev": "ENVIRONMENT=development cdktf destroy --all",
+    "destroy:staging": "ENVIRONMENT=staging cdktf destroy --all",
+    "destroy:prod": "ENVIRONMENT=production cdktf destroy --all"
+  },
+  "keywords": [
+    "aws",
+    "azure",
+    "gcp",
+    "cdktf",
+    "cdk",
+    "terraform",
+    "infrastructure",
+    "iac"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@cdktf/provider-aws": "^12.0.0",
+    "@cdktf/provider-azurerm": "^5.0.0",
+    "@cdktf/provider-google": "^6.0.0",
+    "@cdktf/provider-random": "^5.0.0",
+    "aws-cdk-lib": "^2.80.0",
+    "cdktf": "^0.15.0",
+    "constructs": "^10.1.0",
+    "dotenv": "^16.0.0",
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.0.0",
+    "@types/js-yaml": "^4.0.5",
+    "@types/node": "^18.0.0",
+    "jest": "^29.0.0",
+    "ts-jest": "^29.0.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^4.9.0"
+  }
+} 

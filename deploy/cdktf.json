@@ -1,0 +1,30 @@
+{
+  "language": "typescript",
+  "app": "npx ts-node bin/app.ts",
+  "projectId": "dwelling-aws-deployment",
+  "sendCrashReports": false,
+  "terraformProviders": [
+    "aws@~> 4.0"
+  ],
+  "terraformModules": [
+    {
+      "name": "vpc",
+      "source": "terraform-aws-modules/vpc/aws",
+      "version": "~> 3.0"
+    },
+    {
+      "name": "rds",
+      "source": "terraform-aws-modules/rds/aws",
+      "version": "~> 5.0"
+    },
+    {
+      "name": "ecs",
+      "source": "terraform-aws-modules/ecs/aws",
+      "version": "~> 4.0"
+    }
+  ],
+  "context": {
+    "excludeStackIdFromLogicalIds": "true",
+    "allowSepCharsInLogicalIds": "true"
+  }
+} 

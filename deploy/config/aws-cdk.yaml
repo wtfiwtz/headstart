@@ -1,0 +1,59 @@
+provider: aws
+framework: cdk
+environment: development
+region: us-east-1
+
+application:
+  name: dwelling
+  containerImage: dwelling
+  containerTag: latest
+  containerPort: 3000
+  healthCheckPath: /health
+  cpu: 256
+  memory: 512
+  desiredCount: 1
+  autoscaling:
+    enabled: true
+    minCapacity: 1
+    maxCapacity: 5
+    cpuTargetUtilization: 70
+    memoryTargetUtilization: 70
+  environment:
+    RAILS_ENV: development
+    NODE_ENV: development
+  secrets:
+    DATABASE_URL: DATABASE_URL
+    SECRET_KEY_BASE: SECRET_KEY_BASE
+
+network:
+  vpcName: dwelling-vpc
+  cidr: 10.0.0.0/16
+  azCount: 2
+  publicSubnets:
+    - 10.0.1.0/24
+    - 10.0.2.0/24
+  privateSubnets:
+    - 10.0.3.0/24
+    - 10.0.4.0/24
+  databaseSubnets:
+    - 10.0.5.0/24
+    - 10.0.6.0/24
+  enableNatGateway: true
+  singleNatGateway: true
+
+database:
+  engine: postgres
+  engineVersion: 13.4
+  instanceClass: db.t3.micro
+  allocatedStorage: 20
+  multiAz: false
+  backupRetentionPeriod: 7
+  databaseName: dwelling_development
+  username: dwelling
+  port: 5432
+
+monitoring:
+  alarmEmail: alerts@example.com
+  enableDashboard: true
+  enableAlarms: false
+  logRetentionDays: 7 

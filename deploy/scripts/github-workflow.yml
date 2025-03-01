@@ -1,0 +1,169 @@
+name: Deploy Infrastructure
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'deploy/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'deploy/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'development'
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+      command:
+        description: 'Command to run'
+        required: true
+        default: 'plan'
+        type: choice
+        options:
+          - plan
+          - deploy
+          - destroy
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+          cache-dependency-path: deploy/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./deploy
+
+      - name: Validate TypeScript
+        run: npm run compile
+        working-directory: ./deploy
+
+  plan:
+    name: Plan
+    needs: validate
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+      ENVIRONMENT: ${{ github.event.inputs.environment || 'development' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+          cache-dependency-path: deploy/package-lock.json
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: '1.3.0'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./deploy
+
+      - name: Synthesize Terraform configuration
+        run: npx cdktf synth
+        working-directory: ./deploy
+
+      - name: Plan Terraform changes
+        run: npx cdktf plan --all --var environment=$ENVIRONMENT
+        working-directory: ./deploy
+
+  deploy:
+    name: Deploy
+    needs: plan
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.command == 'deploy'
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+      ENVIRONMENT: ${{ github.event.inputs.environment }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+          cache-dependency-path: deploy/package-lock.json
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: '1.3.0'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./deploy
+
+      - name: Synthesize Terraform configuration
+        run: npx cdktf synth
+        working-directory: ./deploy
+
+      - name: Deploy infrastructure
+        run: npx cdktf deploy --all --auto-approve --var environment=$ENVIRONMENT
+        working-directory: ./deploy
+
+  destroy:
+    name: Destroy
+    needs: plan
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.command == 'destroy'
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+      ENVIRONMENT: ${{ github.event.inputs.environment }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+          cache-dependency-path: deploy/package-lock.json
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: '1.3.0'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./deploy
+
+      - name: Synthesize Terraform configuration
+        run: npx cdktf synth
+        working-directory: ./deploy
+
+      - name: Destroy infrastructure
+        run: npx cdktf destroy --all --auto-approve --var environment=$ENVIRONMENT
+        working-directory: ./deploy 
