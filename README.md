@@ -1,423 +1,257 @@
-# Rails Application Generator
+# Dwelling Model Builder
 
-This generator creates Rails applications with predefined models, controllers, views, and routes based on YAML configuration files.
+This tool allows you to generate Ruby on Rails or Express.js applications from YAML model definitions.
 
 ## Features
 
-- Generate complete Rails applications with a single command
-- Define models and their relationships in YAML
-- Configure application settings in YAML
-- Support for complex relationships (has_many_through, has_and_belongs_to_many)
-- Automatic route generation
-- Intelligent model generation with validations, scopes, and callbacks
-- Plugin system for extending functionality
-- WebAuthn/Passkeys support for passwordless authentication
-
-## Installation
-
-1. Clone this repository
-2. Run `bundle install` to install dependencies
+- Define models, attributes, and associations in YAML files
+- Generate Ruby on Rails applications with configurable options:
+  - Template engines (ERB, SLIM, HAML)
+  - Form builders (Default, Simple Form, Formtastic)
+  - CSS frameworks (Bootstrap, Tailwind)
+  - Authentication, file uploads, and more
+- Generate Express.js applications with configurable options:
+  - Database types (MongoDB, Sequelize, Prisma)
+  - Model and controller generation
+  - API routes
+  - Advanced API features (pagination, sorting, filtering)
 
 ## Usage
 
+### Command Line
+
 ```bash
-bin/generate [options]
+# Generate using separate configuration and models files
+bin/generate --config config/application.yml --models config/models.yml
+
+# Generate using a combined configuration and models file
+bin/generate --file models.yml
+
+# Specify generator type (ruby or express)
+bin/generate --file models.yml --generator express
+
+# Show help
+bin/generate --help
 ```
 
-### Options
+### Programmatically
 
-- `-c, --config FILE`: Path to configuration YAML file (default: `config/application.yml`)
-- `-m, --models FILE`: Path to models YAML file (default: `config/models.yml`)
-- `-h, --help`: Show help message
+```ruby
+# Generate from YAML file
+Tenant::Builder.build_from_yaml('models.yml', :ruby)
 
-## Configuration Files
+# Or use the DSL for more control
+Tenant::Builder.configure do |config|
+  config.template_engine = :slim
+  # ... other configuration options
+end
 
-### Application Configuration (application.yml)
+# Define models
+user = Tenant::Builder.model(:user) do |b, m|
+  b.attributes m, { name: :string, email: :string }
+  b.has_many m, :posts
+end
 
-The application configuration file defines the overall settings for the generated Rails application:
+# Generate the application
+Tenant::Builder.generator(:ruby)
+  .models([user])
+  .execute
+```
+
+## YAML File Structure
+
+You can use either separate files for configuration and models, or a combined file.
+
+### Combined File Structure
 
 ```yaml
-# Frontend framework (:mvc, :react, :vue)
-frontend: mvc
+# Application Configuration
+frontend: mvc  # mvc, react, vue
+css_framework: bootstrap  # bootstrap, tailwind, bulma
+form_builder: simple_form  # simple_form, formtastic, default
+template_engine: slim  # erb, slim, haml
 
-# Database configuration (:sqlite, :postgresql, :mysql)
-database: postgresql
-database_options:
-  pool: 5
-  timeout: 5000
-  username: postgres
-  password: password
-
-# Search engine (:elasticsearch, :meilisearch)
-search_engine: elasticsearch
-search_engine_options:
-  host: http://localhost:9200
-  index_prefix: myapp
-
-# CSS framework (:bootstrap, :tailwind, :none)
-css_framework: bootstrap
-
-# Controller inheritance pattern (true/false)
-controller_inheritance: true
-
-# Form builder (:default, :simple_form, :formtastic)
-form_builder: simple_form
-
-# Gems to include
+# Gems for Ruby/Rails
 gems:
-  - name: devise
-    version: '~> 4.8'
-  - name: pundit
-    version: '~> 2.2'
+  - name: rodauth-rails
+  - name: image_processing
+    version: '~> 1.2'
 
-# Monitoring tools (:new_relic, :datadog, :sentry)
-monitoring:
-  - new_relic
-  - sentry
+# Express.js specific configuration
+express_path: './out/express_app'
+database_type: mongodb  # mongodb, sequelize, prisma
 
-# Features to enable
-features:
-  # Authentication configuration
-  authentication:
-    provider: rodauth  # or devise
-    generate_user: true
-    passkeys: true  # Enable WebAuthn/passkeys support
-    passkey_options:
-      rp_name: "My Application"  # Relying Party name
-      rp_id: "localhost"         # Relying Party ID (domain)
-      origin: "http://localhost:3000"
-    
-  # File upload configuration
-  file_upload:
-    provider: active_storage
-    
-  # Background jobs configuration
-  background_jobs:
-    provider: sidekiq
-    options:
-      web_interface: true
-```
-
-### Models Configuration (models.yml)
-
-The models configuration file defines the models and their relationships:
-
-```yaml
+# Model definitions
 models:
-  # User model
   user:
     attributes:
-      email: string
       name: string
-      password_digest: string
+      email: string
     associations:
       - kind: has_many
         name: posts
         attrs:
           dependent: destroy
-      - kind: has_one
-        name: profile
-        attrs:
-          dependent: destroy
 
-  # Profile model
-  profile:
+  post:
     attributes:
-      bio: text
-      avatar: string
+      title: string
+      content: text
     associations:
       - kind: belongs_to
         name: user
-        attrs:
-          optional: false
 ```
 
-## Authentication with Passkeys (WebAuthn)
+### Separate Files
 
-The generator supports modern passwordless authentication using WebAuthn/Passkeys with both Devise and Rodauth.
-
-### Configuring Passkeys
-
-To enable passkeys, add the following to your `application.yml`:
+#### Configuration File (application.yml)
 
 ```yaml
+frontend: mvc
+css_framework: bootstrap
+form_builder: simple_form
+template_engine: slim
+gems:
+  - name: rodauth-rails
+  - name: image_processing
+    version: '~> 1.2'
 features:
   authentication:
-    provider: devise  # or rodauth
-    passkeys: true
-    passkey_options:
-      rp_name: "My Application"  # The name shown during registration
-      rp_id: "localhost"         # Your domain (use localhost for development)
-      origin: "http://localhost:3000"  # Your application's origin
+    provider: rodauth
 ```
 
-### Passkey Options
+#### Models File (models.yml)
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `rp_name` | The name of your application shown during WebAuthn registration | "Rails Application" |
-| `rp_id` | The Relying Party ID (usually your domain) | "localhost" |
-| `origin` | The origin of your application | "http://localhost:3000" |
+```yaml
+user:
+  attributes:
+    name: string
+    email: string
+  associations:
+    - kind: has_many
+      name: posts
+      attrs:
+        dependent: destroy
 
-### Supported Authentication Providers
+post:
+  attributes:
+    title: string
+    content: text
+  associations:
+    - kind: belongs_to
+      name: user
+```
 
-- **Devise**: Uses the `devise-passkeys` gem for WebAuthn integration
-- **Rodauth**: Uses Rodauth's built-in WebAuthn features
+## Express.js API Features
 
-## API Features
-
-All generated controllers include robust API endpoints with the following features:
+The Express.js generator includes advanced API features for building robust RESTful APIs:
 
 ### Pagination
 
-The generator uses the Pagy gem for efficient pagination:
+Automatically adds pagination to your API endpoints:
 
 ```
-GET /users?page=2&per_page=20
+GET /api/users?page=2&limit=10
 ```
 
 Response includes pagination metadata:
 
 ```json
 {
-  "users": [...],
+  "data": [...],
   "pagination": {
-    "current_page": 2,
-    "total_pages": 5,
-    "total_count": 98,
-    "per_page": 20
+    "total": 100,
+    "totalPages": 10,
+    "currentPage": 2,
+    "limit": 10,
+    "hasNextPage": true,
+    "hasPrevPage": true,
+    "nextPage": 3,
+    "prevPage": 1
   }
 }
 ```
 
 ### Sorting
 
-Sort by any model attribute:
+Sort results by any field in ascending or descending order:
 
 ```
-GET /users?sort=created_at&direction=desc
-```
-
-Multiple sort parameters are supported:
-
-```
-GET /users?q[s]=name+asc&q[s][]=email+desc
+GET /api/users?sort=name:asc,createdAt:desc
 ```
 
 ### Filtering
 
-Basic filtering by exact match:
+Filter results using simple key-value pairs:
 
 ```
-GET /users?email=user@example.com
+GET /api/users?filter=status:active,role:admin
 ```
 
-Range filtering for numeric and date fields:
+Or use advanced operators:
 
 ```
-GET /users?created_at_from=2023-01-01&created_at_to=2023-12-31
-GET /users?age_min=18&age_max=65
+GET /api/users?filter=age:gt:18,name:regex:john
 ```
 
-Text search across all string/text fields:
+Supported operators:
+- `gt:` - Greater than
+- `lt:` - Less than
+- `gte:` - Greater than or equal to
+- `lte:` - Less than or equal to
+- `ne:` - Not equal to
+- `regex:` - Regular expression (case insensitive)
+
+### Field Selection
+
+Select only the fields you need:
 
 ```
-GET /users?q=search+term
+GET /api/users?fields=name,email,role
 ```
 
-Advanced filtering with Ransack:
-
-```
-GET /users?q[email_cont]=example.com&q[name_start]=John&q[created_at_gteq]=2023-01-01
-```
-
-Common Ransack predicates:
-- `eq`: Equal
-- `cont`: Contains
-- `start`: Starts with
-- `end`: Ends with
-- `gt/lt`: Greater than/Less than
-- `gteq/lteq`: Greater than or equal/Less than or equal
-
-### Response Formats
-
-All controllers support multiple response formats:
-
-```
-GET /users.json
-GET /users.xml
-GET /users.csv
-```
-
-### API Documentation
-
-Each API endpoint includes metadata about available filters and sortable fields:
-
-```json
-{
-  "users": [...],
-  "pagination": {...},
-  "meta": {
-    "filters": {
-      "email": {
-        "predicates": ["eq", "cont", "start", "end"],
-        "type": "string"
-      },
-      "age": {
-        "predicates": ["eq", "gt", "lt", "gteq", "lteq"],
-        "type": "integer"
-      }
-    },
-    "sortable_fields": ["id", "email", "name", "created_at", "updated_at"]
-  }
-}
-```
-
-## Database Support
-
-The generator supports multiple database systems:
-
-### SQLite (Default)
-
-Lightweight file-based database, perfect for development and small applications:
-
-```yaml
-database: sqlite
-```
-
-### PostgreSQL
-
-Advanced SQL database with powerful features like JSON storage, full-text search, and more:
-
-```yaml
-database: postgresql
-database_options:
-  pool: 5
-  username: postgres
-  password: password
-  host: localhost
-  port: 5432
-```
-
-### MySQL
-
-Popular SQL database with excellent performance:
-
-```yaml
-database: mysql
-database_options:
-  pool: 5
-  username: root
-  password: password
-  host: localhost
-  port: 3306
-```
-
-## Search Engine Integration
-
-The generator supports advanced search capabilities through integration with popular search engines:
-
-### Elasticsearch
-
-Full-featured search engine with powerful text analysis, faceting, and more:
-
-```yaml
-search_engine: elasticsearch
-search_engine_options:
-  host: http://localhost:9200
-  index_prefix: myapp
-```
-
-When Elasticsearch is enabled:
-- All models include the `Searchable` concern
-- Controllers gain a `/search` endpoint with highlighting
-- Intelligent field mapping based on attribute types
-- Support for pagination and sorting in search results
-
-### MeiliSearch
-
-Fast, lightweight search engine with typo tolerance and great developer experience:
-
-```yaml
-search_engine: meilisearch
-search_engine_options:
-  host: http://localhost:7700
-  api_key: your_api_key
-```
-
-When MeiliSearch is enabled:
-- All models include the `Searchable` concern with Searchkick integration
-- Controllers gain a `/search` endpoint with highlighting
-- Intelligent field mapping for prefix and infix search
-- Support for pagination and sorting in search results
-
-### Search API Endpoints
-
-All controllers include a search endpoint:
-
-```
-GET /users/search?q=search+term&page=1&per_page=20&sort=name:asc
-```
-
-Response includes search results with highlights:
-
-```json
-{
-  "users": [...],
-  "highlights": {
-    "1": {"name": ["John <em>Smith</em>"]},
-    "2": {"bio": ["Works at <em>Smith</em> Industries"]}
-  },
-  "pagination": {
-    "current_page": 1,
-    "total_pages": 5,
-    "total_count": 98,
-    "per_page": 20
-  }
-}
-```
-
-## Supported Relationship Types
+## Supported Association Types
 
 - `has_one`
 - `has_many`
 - `belongs_to`
 - `has_and_belongs_to_many`
-- `has_many_through` (via the `through` attribute)
+- `has_many` with `through` (for Rails)
 
-## Association Options
+## Supported Attribute Types
 
-The generator supports various ActiveRecord association options:
+For Rails:
+- `string`
+- `text`
+- `integer`
+- `float`
+- `decimal`
+- `datetime`
+- `date`
+- `time`
+- `boolean`
+- `binary`
+- `json`
 
-- `dependent`: `:destroy`, `:delete`, `:nullify`, etc.
-- `class_name`: Custom class name
-- `foreign_key`: Custom foreign key
-- `through`: For has_many :through relationships
-- `source`: For has_many :through relationships
-- `polymorphic`: For polymorphic associations
-- `counter_cache`: For counter cache columns
-- `optional`: For optional belongs_to associations
+For Express/MongoDB:
+- `String`
+- `Number`
+- `Date`
+- `Boolean`
+- `ObjectId`
+- `Array`
+- `Object`
 
-## Examples
+For Express/Sequelize:
+- `STRING`
+- `TEXT`
+- `INTEGER`
+- `FLOAT`
+- `DECIMAL`
+- `DATE`
+- `BOOLEAN`
+- `JSON`
 
-### Basic Usage
+## License
 
-```bash
-bin/generate
-```
-
-This will use the default configuration files (`config/application.yml` and `config/models.yml`).
-
-### Custom Configuration Files
-
-```bash
-bin/generate --config my_config.yml --models my_models.yml
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/my-feature`)
-3. Commit your changes (`git commit -am 'Add my feature'`)
-4. Push to the branch (`git push origin feature/my-feature`)
-5. Create a new Pull Request 
+MIT 

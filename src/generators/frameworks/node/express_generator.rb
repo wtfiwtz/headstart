@@ -10,6 +10,7 @@ require_relative '../../concerns/express/express_controller_generator'
 require_relative '../../concerns/express/express_route_generator'
 require_relative '../../concerns/express_app_structure_generator'
 require_relative '../../concerns/environment_config_generator'
+require_relative '../../concerns/express/api_features_handler'
 
 module Tenant
   module Frameworks
@@ -26,6 +27,7 @@ module Tenant
         include Tenant::ExpressRouteGenerator
         include Tenant::ExpressAppStructureGenerator
         include Tenant::EnvironmentConfigGenerator
+        include Tenant::ExpressApiFeaturesHandler
         
         attr_accessor :configuration, :models
         
@@ -74,6 +76,9 @@ module Tenant
             # Generate utility files
             generate_utils
             generate_error_classes
+            
+            # Generate API features
+            generate_api_features
             
             log_info("Express.js application generation completed successfully")
           end
@@ -929,6 +934,11 @@ module Tenant
           # Express.js applications often use client-side frameworks or APIs
           # This is a placeholder for view generation if needed
           log_info("View generation not implemented for Express.js")
+        end
+        
+        def generate_api_features
+          # Implement API features generation logic here
+          log_info("API features generation not implemented for Express.js")
         end
         
         def with_error_handling

@@ -1,0 +1,132 @@
+# Application Configuration
+frontend: mvc  # mvc, react, vue
+css_framework: bootstrap  # bootstrap, tailwind, bulma
+form_builder: simple_form  # simple_form, formtastic, default
+template_engine: slim  # erb, slim, haml
+
+# Gems for Ruby/Rails
+gems:
+  - name: rodauth-rails
+  - name: image_processing
+    version: '~> 1.2'
+  - name: sidekiq
+  - name: slim-rails  # Added for Slim template engine
+
+# Monitoring tools
+monitoring:
+  - new_relic
+  - datadog
+  - sentry
+
+# Features
+features:
+  authentication:
+    provider: rodauth
+    features:
+      - login
+      - logout
+      - create_account
+      - verify_account_email
+      - reset_password
+      - otp
+  file_upload:
+    provider: active_storage
+  background_jobs:
+    provider: sidekiq
+
+# Express.js specific configuration (for Express generator)
+express_path: './out/express_app'
+database_type: mongodb  # mongodb, sequelize, prisma
+
+# Model definitions
+models:
+  user:
+    attributes:
+      name: string
+      email: string
+      password: string
+      active: boolean
+      last_login_at: datetime
+    associations:
+      - kind: has_many
+        name: accounts
+        attrs:
+          dependent: destroy
+      - kind: has_many
+        name: posts
+        attrs:
+          dependent: nullify
+      - kind: has_one
+        name: profile
+        attrs:
+          dependent: destroy
+      - kind: has_many
+        name: comments
+        attrs:
+          through: posts
+
+  account:
+    attributes:
+      name: string
+      number: string
+      active: boolean
+    associations:
+      - kind: belongs_to
+        name: user
+      - kind: has_many
+        name: transactions
+        attrs:
+          dependent: destroy
+
+  profile:
+    attributes:
+      bio: text
+      avatar: string
+      website: string
+    associations:
+      - kind: belongs_to
+        name: user
+
+  post:
+    attributes:
+      title: string
+      content: text
+      published: boolean
+      published_at: datetime
+      slug: string
+    associations:
+      - kind: belongs_to
+        name: user
+      - kind: has_many
+        name: comments
+        attrs:
+          dependent: destroy
+      - kind: has_and_belongs_to_many
+        name: categories
+
+  comment:
+    attributes:
+      content: text
+      approved: boolean
+    associations:
+      - kind: belongs_to
+        name: post
+      - kind: belongs_to
+        name: user
+
+  category:
+    attributes:
+      name: string
+      slug: string
+    associations:
+      - kind: has_and_belongs_to_many
+        name: posts
+
+  transaction:
+    attributes:
+      amount: decimal
+      description: string
+      transaction_date: datetime
+    associations:
+      - kind: belongs_to
+        name: account 

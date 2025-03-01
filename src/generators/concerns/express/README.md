@@ -1,60 +1,114 @@
 # Express.js Generator Concerns
 
-This directory contains the concerns (modules) used specifically by the Express.js generator. Each concern is responsible for a specific aspect of the Express.js application generation process.
+This directory contains concerns (modules) specifically for the Express.js generator. Each concern is responsible for a specific aspect of the application generation process.
 
 ## Structure
 
-The Express.js generator has been refactored into separate concerns to improve maintainability and organization. Each concern is responsible for a specific aspect of the Express.js application generation process.
+The Express.js generator has been refactored into separate concerns to improve maintainability and organization. Each concern focuses on a specific responsibility, making the code more modular and easier to extend.
 
-### Concerns
+## Concerns
 
-- **ExpressConfigurationHandler**: Handles Express-specific configuration settings and validation.
-- **ExpressPackageManager**: Manages npm package dependencies and installation for Express applications.
-- **ExpressDatabaseHandler**: Handles database-specific configurations and setup for Express applications.
-- **ExpressStructureGenerator**: Creates the directory structure and basic files for Express applications.
-- **ExpressTemplateHandler**: Generates utility files and templates for Express applications.
-- **ExpressModelGenerator**: Generates models for different database types (MongoDB, Sequelize, Prisma).
-- **ExpressControllerGenerator**: Generates controllers for different database types.
-- **ExpressRouteGenerator**: Generates routes for different models.
+- **ExpressConfigurationHandler**: Manages configuration settings and validation for Express.js applications.
+- **ExpressPackageManager**: Handles npm package dependencies and installation.
+- **ExpressDatabaseHandler**: Manages database configurations and setup for MongoDB, Sequelize, and Prisma.
+- **ExpressStructureGenerator**: Creates the directory structure and basic files for an Express.js application.
+- **ExpressTemplateHandler**: Generates utility files and templates for Express.js applications.
+- **ExpressModelGenerator**: Generates models for MongoDB, Sequelize, and Prisma.
+- **ExpressControllerGenerator**: Generates controllers for MongoDB, Sequelize, and Prisma.
+- **ExpressRouteGenerator**: Generates routes for Express.js applications.
+- **ExpressApiFeaturesHandler**: Adds advanced API features like pagination, sorting, and filtering to Express.js applications.
 
 ## Supported Database Types
 
-The Express.js generator supports the following database types:
+- **MongoDB**: Uses Mongoose ODM for MongoDB integration.
+- **Sequelize**: ORM for SQL databases (MySQL, PostgreSQL, SQLite, etc.).
+- **Prisma**: Modern database toolkit for TypeScript and Node.js.
 
-- **MongoDB**: Uses Mongoose ODM.
-- **Sequelize**: Uses Sequelize ORM with PostgreSQL or MySQL.
-- **Prisma**: Uses Prisma ORM with PostgreSQL.
+## API Features
+
+The `ExpressApiFeaturesHandler` concern adds the following features to your Express.js API:
+
+### Pagination
+
+Automatically adds pagination to your API endpoints:
+
+```
+GET /api/users?page=2&limit=10
+```
+
+Response includes pagination metadata:
+
+```json
+{
+  "data": [...],
+  "pagination": {
+    "total": 100,
+    "totalPages": 10,
+    "currentPage": 2,
+    "limit": 10,
+    "hasNextPage": true,
+    "hasPrevPage": true,
+    "nextPage": 3,
+    "prevPage": 1
+  }
+}
+```
+
+### Sorting
+
+Sort results by any field in ascending or descending order:
+
+```
+GET /api/users?sort=name:asc,createdAt:desc
+```
+
+### Filtering
+
+Filter results using simple key-value pairs:
+
+```
+GET /api/users?filter=status:active,role:admin
+```
+
+Or use advanced operators:
+
+```
+GET /api/users?filter=age:gt:18,name:regex:john
+```
+
+Supported operators:
+- `gt:` - Greater than
+- `lt:` - Less than
+- `gte:` - Greater than or equal to
+- `lte:` - Less than or equal to
+- `ne:` - Not equal to
+- `regex:` - Regular expression (case insensitive)
+
+### Field Selection
+
+Select only the fields you need:
+
+```
+GET /api/users?fields=name,email,role
+```
 
 ## Adding New Features
 
-To add new features to the Express.js generator, you can create a new concern or extend an existing one. Each concern should be a module that can be included in the ExpressGenerator class.
+To add a new feature or extend an existing one:
 
-For example, to add support for a new database type, you would need to:
+1. Create a new concern or modify an existing one in this directory.
+2. Include the concern in the `ExpressGenerator` class in `src/generators/frameworks/node/express_generator.rb`.
+3. Update this README to document the new feature.
 
-1. Update the `ExpressDatabaseHandler` concern to support the new database type.
-2. Update the `ExpressModelGenerator` concern to generate models for the new database type.
-3. Update the `ExpressControllerGenerator` concern to generate controllers for the new database type.
-4. Update the `ExpressPackageManager` concern to include the necessary dependencies for the new database type.
-
-## Usage
-
-These concerns are used by the ExpressGenerator class to generate a complete Express.js application. The generator is initialized with a configuration object that specifies the database type, models, and other settings.
+## Usage Example
 
 ```ruby
-generator = Tenant::Frameworks::Node::ExpressGenerator.new
+# Initialize the Express generator with a configuration
+generator = Tenant::ExpressGenerator.new
 generator.apply_configuration({
-  express_path: "path/to/express/app",
-  database_type: "mongodb", # or "sequelize", "prisma"
-  models: [
-    {
-      name: "User",
-      attributes: [
-        { name: "name", type: "string" },
-        { name: "email", type: "string" },
-        { name: "password", type: "string" }
-      ]
-    }
-  ]
+  express_path: './out/express_app',
+  database_type: :mongodb,
+  models: [...]
 })
 generator.execute
 ``` 

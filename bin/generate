@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 
+require_relative '../model_builder'
 require_relative '../src/generators/generator_factory'
 
 # Parse command line arguments
@@ -7,7 +8,9 @@ require 'optparse'
 
 options = {
   config_file: 'config/application.yml',
-  models_file: 'config/models.yml'
+  models_file: 'config/models.yml',
+  generator_type: :ruby,
+  combined_file: nil
 }
 
 OptionParser.new do |opts|
@@ -20,6 +23,14 @@ OptionParser.new do |opts|
   opts.on("-m", "--models FILE", "Path to models YAML file") do |file|
     options[:models_file] = file
   end
+  
+  opts.on("-f", "--file FILE", "Path to combined configuration and models YAML file") do |file|
+    options[:combined_file] = file
+  end
+  
+  opts.on("-g", "--generator TYPE", [:ruby, :express], "Generator type (ruby or express)") do |type|
+    options[:generator_type] = type.to_sym
+  end
 
   opts.on("-h", "--help", "Show this help message") do
     puts opts
@@ -27,37 +38,60 @@ OptionParser.new do |opts|
   end
 end.parse!
 
-# Check if configuration files exist
-unless File.exist?(options[:config_file])
-  puts "Error: Configuration file '#{options[:config_file]}' not found."
-  exit 1
-end
-
-unless File.exist?(options[:models_file])
-  puts "Error: Models file '#{options[:models_file]}' not found."
-  exit 1
-end
-
 puts "Starting application generation..."
-puts "Using configuration file: #{options[:config_file]}"
-puts "Using models file: #{options[:models_file]}"
 
-# Create generator and load configuration
-generator = Tenant::GeneratorFactory.create(:ruby)
+# Check if using combined file or separate files
+if options[:combined_file]
+  # Check if combined file exists
+  unless File.exist?(options[:combined_file])
+    puts "Error: Combined YAML file '#{options[:combined_file]}' not found."
+    exit 1
+  end
+  
+  puts "Using combined configuration and models file: #{options[:combined_file]}"
+  puts "Generating application using #{options[:generator_type]} generator..."
+  
+  # Use the Builder class to build from the combined YAML file
+  begin
+    Tenant::Builder.build_from_yaml(options[:combined_file], options[:generator_type])
+    puts "Application generation completed successfully!"
+  rescue StandardError => e
+    puts "Error during application generation: #{e.message}"
+    puts e.backtrace
+    exit 1
+  end
+else
+  # Check if configuration files exist
+  unless File.exist?(options[:config_file])
+    puts "Error: Configuration file '#{options[:config_file]}' not found."
+    exit 1
+  end
 
-begin
-  # Load configuration from YAML
-  generator.load_configuration_from_yaml(options[:config_file])
+  unless File.exist?(options[:models_file])
+    puts "Error: Models file '#{options[:models_file]}' not found."
+    exit 1
+  end
   
-  # Load models from YAML
-  generator.load_models_from_yaml(options[:models_file])
-  
-  # Execute the generator
-  generator.execute
-  
-  puts "Application generation completed successfully!"
-rescue StandardError => e
-  puts "Error during application generation: #{e.message}"
-  puts e.backtrace
-  exit 1
+  puts "Using configuration file: #{options[:config_file]}"
+  puts "Using models file: #{options[:models_file]}"
+
+  # Create generator and load configuration
+  generator = Tenant::GeneratorFactory.create(options[:generator_type])
+
+  begin
+    # Load configuration from YAML
+    generator.load_configuration_from_yaml(options[:config_file])
+    
+    # Load models from YAML
+    generator.load_models_from_yaml(options[:models_file])
+    
+    # Execute the generator
+    generator.execute
+    
+    puts "Application generation completed successfully!"
+  rescue StandardError => e
+    puts "Error during application generation: #{e.message}"
+    puts e.backtrace
+    exit 1
+  end
 end 
