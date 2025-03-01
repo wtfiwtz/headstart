@@ -1,0 +1,54 @@
+# Application Generator Configuration
+
+# Frontend framework (:mvc, :react, :vue)
+frontend: mvc
+
+# CSS framework (:bootstrap, :tailwind, :none)
+css_framework: bootstrap
+
+# Controller inheritance pattern (true/false)
+controller_inheritance: true
+
+# Form builder (:default, :simple_form, :formtastic)
+form_builder: simple_form
+
+# Gems to include
+gems:
+  - name: devise
+    version: '~> 4.8'
+  - name: pundit
+    version: '~> 2.2'
+  - name: kaminari
+    version: '~> 1.2'
+  - name: ransack
+  - name: friendly_id
+    version: '~> 5.4'
+    options:
+      require: false
+
+# Monitoring tools (:new_relic, :datadog, :sentry)
+monitoring:
+  - new_relic
+  - sentry
+
+# Features to enable
+features:
+  # Authentication configuration
+  authentication:
+    provider: devise
+    generate_user: true
+    passkeys: true  # Enable WebAuthn/passkeys support
+    passkey_options:
+      rp_name: "My Application"  # Relying Party name
+      rp_id: "localhost"         # Relying Party ID (domain)
+      origin: "http://localhost:3000"
+    
+  # File upload configuration
+  file_upload:
+    provider: active_storage
+    
+  # Background jobs configuration
+  background_jobs:
+    provider: sidekiq
+    options:
+      web_interface: true 

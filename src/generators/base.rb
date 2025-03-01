@@ -1,6 +1,4 @@
 
-ModelStruct = Struct.new(:name, :attributes, :associations)
-
 module Tenant
   class BaseGenerator
     attr_accessor :model

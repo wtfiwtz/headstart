@@ -1,0 +1,134 @@
+# Model Definitions
+
+models:
+  # User model
+  user:
+    attributes:
+      email: string
+      name: string
+      password_digest: string
+      role: string
+      active: boolean
+      last_login_at: datetime
+    associations:
+      - kind: has_many
+        name: posts
+        attrs:
+          dependent: destroy
+      - kind: has_many
+        name: comments
+        attrs:
+          dependent: destroy
+      - kind: has_one
+        name: profile
+        attrs:
+          dependent: destroy
+      - kind: has_many
+        name: accounts
+        attrs:
+          dependent: destroy
+
+  # Profile model
+  profile:
+    attributes:
+      bio: text
+      avatar: string
+      location: string
+      website: string
+      birthday: date
+    associations:
+      - kind: belongs_to
+        name: user
+        attrs:
+          optional: false
+
+  # Account model
+  account:
+    attributes:
+      name: string
+      account_number: string
+      status: string
+      balance: decimal
+      account_type: string
+    associations:
+      - kind: belongs_to
+        name: user
+        attrs:
+          optional: false
+      - kind: has_many
+        name: transactions
+        attrs:
+          dependent: destroy
+
+  # Post model
+  post:
+    attributes:
+      title: string
+      content: text
+      published: boolean
+      published_at: datetime
+      slug: string
+      view_count: integer
+    associations:
+      - kind: belongs_to
+        name: user
+        attrs:
+          optional: false
+      - kind: has_many
+        name: comments
+        attrs:
+          dependent: destroy
+      - kind: has_and_belongs_to_many
+        name: categories
+
+  # Comment model
+  comment:
+    attributes:
+      content: text
+      approved: boolean
+      parent_id: integer
+    associations:
+      - kind: belongs_to
+        name: user
+        attrs:
+          optional: false
+      - kind: belongs_to
+        name: post
+        attrs:
+          optional: false
+      - kind: belongs_to
+        name: parent
+        attrs:
+          class_name: Comment
+          optional: true
+          foreign_key: parent_id
+      - kind: has_many
+        name: replies
+        attrs:
+          class_name: Comment
+          foreign_key: parent_id
+
+  # Category model
+  category:
+    attributes:
+      name: string
+      description: text
+      slug: string
+      position: integer
+    associations:
+      - kind: has_and_belongs_to_many
+        name: posts
+
+  # Transaction model
+  transaction:
+    attributes:
+      amount: decimal
+      transaction_type: string
+      description: text
+      processed_at: datetime
+      reference_number: string
+    associations:
+      - kind: belongs_to
+        name: account
+        attrs:
+          optional: false 
