@@ -12,6 +12,9 @@ controller_inheritance: true
 # Form builder (:default, :simple_form, :formtastic)
 form_builder: simple_form
 
+# Template engine (:erb, :slim, :haml)
+template_engine: slim
+
 # Gems to include
 gems:
   - name: devise
@@ -35,7 +38,7 @@ monitoring:
 features:
   # Authentication configuration
   authentication:
-    provider: devise
+    provider: rodauth
     generate_user: true
     passkeys: true  # Enable WebAuthn/passkeys support
     passkey_options:

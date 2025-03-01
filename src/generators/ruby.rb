@@ -21,6 +21,7 @@ require_relative './concerns/rails/setup_commands/form_builder_command'
 require_relative './concerns/rails/setup_commands/features_command'
 require_relative './concerns/rails/setup_commands/monitoring_command'
 require_relative './concerns/rails/setup_commands/vector_database_command'
+require_relative './concerns/rails/setup_commands/template_engine_command'
 
 module Tenant
   class RubyGenerator < BaseGenerator
@@ -185,26 +186,25 @@ module Tenant
     def setup_features
       return unless @configuration&.features&.any?
       
-      log_info("Setting up features: #{@configuration.features.keys.join(', ')}")
+      log_info("Setting up features")
       
-      # Setup features using command pattern
-      command = Tenant::Rails::SetupCommands::FeaturesCommand.new
-      command.execute(@rails_all_path, @configuration)
+      # Execute setup commands
+      Tenant::Rails::SetupCommands::FeaturesCommand.new(@configuration, @rails_all_path).execute
       
-      # Setup vector database if configured
-      if @configuration.vector_db
-        log_info("Setting up vector database: #{@configuration.vector_db}")
-        command = Tenant::Rails::SetupCommands::VectorDatabaseCommand.new
-        command.execute(@rails_all_path, @configuration)
-      end
+      # Setup CSS framework if specified
+      Tenant::Rails::SetupCommands::CssFrameworkCommand.new(@configuration, @rails_all_path).execute if @configuration.css_framework
       
-      # Setup embedding provider if configured
-      if @configuration.embedding_provider
-        log_info("Setting up embedding provider: #{@configuration.embedding_provider}")
-        # TODO: Implement embedding provider setup command
-        # For now, we'll just log that it's not implemented
-        log_info("Embedding provider setup not implemented yet")
-      end
+      # Setup form builder if specified
+      Tenant::Rails::SetupCommands::FormBuilderCommand.new(@configuration, @rails_all_path).execute if @configuration.form_builder
+      
+      # Setup template engine if specified
+      Tenant::Rails::SetupCommands::TemplateEngineCommand.new(@configuration, @rails_all_path).execute if @configuration.template_engine
+      
+      # Setup monitoring if specified
+      Tenant::Rails::SetupCommands::MonitoringCommand.new(@configuration, @rails_all_path).execute if @configuration.monitoring&.any?
+      
+      # Setup vector database if specified
+      Tenant::Rails::SetupCommands::VectorDatabaseCommand.new(@configuration, @rails_all_path).execute if @configuration.vector_db
     end
     
     def setup_form_builder

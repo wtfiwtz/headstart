@@ -27,9 +27,8 @@ module Tenant
       form_templates_dir = "#{@templates_path}/views"
       FileUtils.mkdir_p form_templates_dir
       
-      # Create default form template if it doesn't exist
-      default_form_template = "#{form_templates_dir}/_form.html.erb"
-      create_default_form_template(form_templates_dir) unless File.exist?(default_form_template)
+      # Create form templates based on the configured template engine
+      create_form_templates(form_templates_dir)
     end
     
     def create_generated_controller_template
@@ -141,6 +140,57 @@ TEMPLATE
       puts "Created template_derived_controller.rb.erb in #{template_dir}"
     end
     
+    def create_form_templates(dir)
+      # Create form templates based on the configured template engine
+      case @template_engine.to_s.downcase
+      when 'slim'
+        create_slim_form_templates(dir)
+      when 'haml'
+        create_haml_form_templates(dir)
+      else
+        create_erb_form_templates(dir)
+      end
+    end
+    
+    def create_erb_form_templates(dir)
+      # Create default form template
+      create_default_form_template(dir) unless File.exist?("#{dir}/_form.html.erb")
+      
+      # Create form template based on the chosen form builder
+      case @form_builder.to_s.downcase
+      when 'simple_form'
+        create_simple_form_template(dir)
+      when 'formtastic'
+        create_formtastic_template(dir)
+      end
+    end
+    
+    def create_slim_form_templates(dir)
+      # Create default Slim form template
+      create_default_slim_form_template(dir) unless File.exist?("#{dir}/_form.html.slim")
+      
+      # Create form template based on the chosen form builder
+      case @form_builder.to_s.downcase
+      when 'simple_form'
+        create_simple_form_slim_template(dir)
+      when 'formtastic'
+        create_formtastic_slim_template(dir)
+      end
+    end
+    
+    def create_haml_form_templates(dir)
+      # Create default HAML form template
+      create_default_haml_form_template(dir) unless File.exist?("#{dir}/_form.html.haml")
+      
+      # Create form template based on the chosen form builder
+      case @form_builder.to_s.downcase
+      when 'simple_form'
+        create_simple_form_haml_template(dir)
+      when 'formtastic'
+        create_formtastic_haml_template(dir)
+      end
+    end
+    
     def create_default_form_template(dir)
       template_content = <<~TEMPLATE
 <%%= form_with(model: @<%= singular %>, local: true) do |form| %>
@@ -170,7 +220,7 @@ TEMPLATE
 TEMPLATE
 
       File.write("#{dir}/_form.html.erb", template_content)
-      puts "Created default form template in #{dir}/_form.html.erb"
+      puts "Created default ERB form template in #{dir}/_form.html.erb"
     end
     
     def create_simple_form_template(dir)
@@ -192,7 +242,7 @@ TEMPLATE
 TEMPLATE
 
       File.write("#{dir}/_form.html.erb", template_content)
-      puts "Created Simple Form template in #{dir}/_form.html.erb"
+      puts "Created Simple Form ERB template in #{dir}/_form.html.erb"
     end
     
     def create_formtastic_template(dir)
@@ -212,7 +262,127 @@ TEMPLATE
 TEMPLATE
 
       File.write("#{dir}/_form.html.erb", template_content)
-      puts "Created Formtastic template in #{dir}/_form.html.erb"
+      puts "Created Formtastic ERB template in #{dir}/_form.html.erb"
+    end
+    
+    def create_default_slim_form_template(dir)
+      template_content = <<~TEMPLATE
+= form_with(model: @<%= singular %>, local: true) do |form|
+  - if @<%= singular %>.errors.any?
+    #error_explanation
+      h2 = pluralize(@<%= singular %>.errors.count, "error") + " prohibited this <%= singular %> from being saved:"
+      ul
+        - @<%= singular %>.errors.full_messages.each do |message|
+          li = message
+
+<% attributes.each do |attribute| %>
+  .field
+    = form.label :<%= attribute %>
+    = form.text_field :<%= attribute %>, class: 'form-control'
+<% end %>
+
+  .actions
+    = form.submit class: 'btn btn-primary'
+TEMPLATE
+
+      File.write("#{dir}/_form.html.slim", template_content)
+      puts "Created default Slim form template in #{dir}/_form.html.slim"
+    end
+    
+    def create_simple_form_slim_template(dir)
+      template_content = <<~TEMPLATE
+= simple_form_for(@<%= singular %>) do |f|
+  = f.error_notification
+  = f.error_notification message: f.object.errors[:base].to_sentence if f.object.errors[:base].present?
+
+  .form-inputs
+<% attributes.each do |attribute| %>
+    = f.input :<%= attribute %>
+<% end %>
+
+  .form-actions
+    = f.button :submit, class: 'btn btn-primary'
+TEMPLATE
+
+      File.write("#{dir}/_form.html.slim", template_content)
+      puts "Created Simple Form Slim template in #{dir}/_form.html.slim"
+    end
+    
+    def create_formtastic_slim_template(dir)
+      template_content = <<~TEMPLATE
+= semantic_form_for @<%= singular %> do |f|
+  = f.inputs do
+<% attributes.each do |attribute| %>
+    = f.input :<%= attribute %>
+<% end %>
+  
+  = f.actions do
+    = f.action :submit, as: :button, button_html: { class: 'btn btn-primary' }
+    = f.action :cancel, as: :link, button_html: { class: 'btn btn-secondary' }
+TEMPLATE
+
+      File.write("#{dir}/_form.html.slim", template_content)
+      puts "Created Formtastic Slim template in #{dir}/_form.html.slim"
+    end
+    
+    def create_default_haml_form_template(dir)
+      template_content = <<~TEMPLATE
+= form_with(model: @<%= singular %>, local: true) do |form|
+  - if @<%= singular %>.errors.any?
+    #error_explanation
+      %h2= pluralize(@<%= singular %>.errors.count, "error") + " prohibited this <%= singular %> from being saved:"
+      %ul
+        - @<%= singular %>.errors.full_messages.each do |message|
+          %li= message
+
+<% attributes.each do |attribute| %>
+  .field
+    = form.label :<%= attribute %>
+    = form.text_field :<%= attribute %>, class: 'form-control'
+<% end %>
+
+  .actions
+    = form.submit class: 'btn btn-primary'
+TEMPLATE
+
+      File.write("#{dir}/_form.html.haml", template_content)
+      puts "Created default HAML form template in #{dir}/_form.html.haml"
+    end
+    
+    def create_simple_form_haml_template(dir)
+      template_content = <<~TEMPLATE
+= simple_form_for(@<%= singular %>) do |f|
+  = f.error_notification
+  = f.error_notification message: f.object.errors[:base].to_sentence if f.object.errors[:base].present?
+
+  .form-inputs
+<% attributes.each do |attribute| %>
+    = f.input :<%= attribute %>
+<% end %>
+
+  .form-actions
+    = f.button :submit, class: 'btn btn-primary'
+TEMPLATE
+
+      File.write("#{dir}/_form.html.haml", template_content)
+      puts "Created Simple Form HAML template in #{dir}/_form.html.haml"
+    end
+    
+    def create_formtastic_haml_template(dir)
+      template_content = <<~TEMPLATE
+= semantic_form_for @<%= singular %> do |f|
+  = f.inputs do
+<% attributes.each do |attribute| %>
+    = f.input :<%= attribute %>
+<% end %>
+  
+  = f.actions do
+    = f.action :submit, as: :button, button_html: { class: 'btn btn-primary' }
+    = f.action :cancel, as: :link, button_html: { class: 'btn btn-secondary' }
+TEMPLATE
+
+      File.write("#{dir}/_form.html.haml", template_content)
+      puts "Created Formtastic HAML template in #{dir}/_form.html.haml"
     end
     
     def update_form_templates
@@ -220,15 +390,8 @@ TEMPLATE
       form_templates_dir = "#{@templates_path}/views"
       FileUtils.mkdir_p form_templates_dir
       
-      # Create form template based on the chosen form builder
-      case @configuration.form_builder
-      when :simple_form
-        create_simple_form_template(form_templates_dir)
-      when :formtastic
-        create_formtastic_template(form_templates_dir)
-      else
-        create_default_form_template(form_templates_dir)
-      end
+      # Create form templates based on the configured template engine
+      create_form_templates(form_templates_dir)
     end
     
     def controller_paths(kind, name)
@@ -241,11 +404,22 @@ TEMPLATE
     def view_paths(kind, name, view_file)
       raise "View file #{view_file} out of range" unless (0..8).include?(view_file)
       base_path = "#{@rails_all_path}/app/#{kind}s"
-      srcs = %w[_form.html.erb _template.html.erb _template.json.jbuilder edit.html.erb
-                index.html.erb index.json.jbuilder new.html.erb show.html.erb show.json.jbuilder]
-      targets = ['_form.html.erb', "_#{name.pluralize}.html.erb", "_#{name.pluralize}.json.jbuilder",
-                 'edit.html.erb', 'index.html.erb', 'index.json.jbuilder', 'new.html.erb', 'show.html.erb',
-                 'show.json.jbuilder']
+      
+      # Determine file extension based on template engine
+      extension = case @template_engine.to_s.downcase
+                  when 'slim'
+                    'slim'
+                  when 'haml'
+                    'haml'
+                  else
+                    'erb'
+                  end
+      
+      srcs = %W[_form.html.#{extension} _template.html.#{extension} _template.json.jbuilder edit.html.#{extension}
+                index.html.#{extension} index.json.jbuilder new.html.#{extension} show.html.#{extension} show.json.jbuilder]
+      targets = ["_form.html.#{extension}", "_#{name.pluralize}.html.#{extension}", "_#{name.pluralize}.json.jbuilder",
+                 "edit.html.#{extension}", "index.html.#{extension}", "index.json.jbuilder", "new.html.#{extension}", "show.html.#{extension}",
+                 "show.json.jbuilder"]
       src = "#{@templates_path}/views/#{srcs[view_file]}"
       target = "#{base_path}/#{name.pluralize}/#{targets[view_file]}"
       [base_path, src, target, targets[view_file]]

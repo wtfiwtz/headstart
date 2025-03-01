@@ -1,5 +1,60 @@
 module Tenant
   module ConfigurationHandler
+    def initialize_configuration(configuration)
+      @rails_path = configuration.rails_path
+      @models = configuration.models || []
+      @gems = configuration.gems || []
+      @css_framework = configuration.css_framework
+      @form_builder = configuration.form_builder
+      @features = configuration.features || []
+      @monitoring = configuration.monitoring || []
+      @template_engine = configuration.template_engine || 'erb' # Default to ERB if not specified
+    end
+
+    def validate_configuration
+      # Validate required configuration
+      raise "Rails path must be specified" unless @rails_path
+      
+      # Validate template engine if specified
+      if @template_engine && !['erb', 'slim', 'haml'].include?(@template_engine.to_s.downcase)
+        raise "Template engine must be one of: erb, slim, haml"
+      end
+      
+      # Validate models if specified
+      if @models
+        raise "Models must be an array" unless @models.is_a?(Array)
+        @models.each do |model|
+          raise "Model must be a hash" unless model.is_a?(Hash)
+          raise "Model must have a name" unless model[:name]
+          raise "Model must have attributes" unless model[:attributes]
+          raise "Model attributes must be a hash" unless model[:attributes].is_a?(Hash)
+        end
+      end
+      
+      # Validate CSS framework if specified
+      if @css_framework && !['bootstrap', 'tailwind', 'bulma', 'foundation'].include?(@css_framework.to_s.downcase)
+        raise "CSS framework must be one of: bootstrap, tailwind, bulma, foundation"
+      end
+      
+      # Validate form builder if specified
+      if @form_builder && !['simple_form', 'formtastic'].include?(@form_builder.to_s.downcase)
+        raise "Form builder must be one of: simple_form, formtastic"
+      end
+    end
+
+    def get_configuration
+      {
+        rails_path: @rails_path,
+        models: @models,
+        gems: @gems,
+        css_framework: @css_framework,
+        form_builder: @form_builder,
+        features: @features,
+        monitoring: @monitoring,
+        template_engine: @template_engine
+      }
+    end
+
     def setup_target
       return if Dir.exist?("#{__dir__}/../../out/rails_app")
 
@@ -1453,8 +1508,9 @@ module Tenant
       # Set basic configuration options
       config.frontend = yaml_content['frontend']&.to_sym if yaml_content['frontend']
       config.css_framework = yaml_content['css_framework']&.to_sym if yaml_content['css_framework']
-      config.controller_inheritance = yaml_content['controller_inheritance'] unless yaml_content['controller_inheritance'].nil?
       config.form_builder = yaml_content['form_builder']&.to_sym if yaml_content['form_builder']
+      config.template_engine = yaml_content['template_engine']&.to_sym if yaml_content['template_engine']
+      config.rails_path = yaml_content['rails_path'] if yaml_content['rails_path']
     end
     
     def process_database_configuration(config, yaml_content)
