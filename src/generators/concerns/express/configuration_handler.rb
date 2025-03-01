@@ -4,6 +4,7 @@ module Tenant
       @config = config
       @express_path = config[:express_path] || "express-app"
       @database_type = config[:database_type] || "mongodb"
+      @language = config[:language] || "javascript"
       @models = config[:models] || []
     end
     
@@ -17,6 +18,12 @@ module Tenant
       valid_db_types = ["mongodb", "mongoose", "sequelize", "prisma", "sql", "mysql", "postgres", "postgresql"]
       unless valid_db_types.include?(@database_type.to_s.downcase)
         raise ArgumentError, "Invalid database type: #{@database_type}. Valid types are: #{valid_db_types.join(', ')}"
+      end
+      
+      # Ensure language is valid
+      valid_languages = ["javascript", "typescript"]
+      unless valid_languages.include?(@language.to_s.downcase)
+        raise ArgumentError, "Invalid language: #{@language}. Valid languages are: #{valid_languages.join(', ')}"
       end
       
       # Ensure models is an array
@@ -41,6 +48,7 @@ module Tenant
       {
         express_path: @express_path,
         database_type: @database_type,
+        language: @language,
         models: @models
       }
     end

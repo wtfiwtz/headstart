@@ -3,8 +3,11 @@ module Tenant
     def generate_api_features
       log_info("Generating API features (pagination, sorting, filtering)")
       
+      # Determine directory paths based on language
+      base_path = @language.to_s.downcase == "typescript" ? "#{@express_path}/src" : @express_path
+      
       # Create middleware directory if it doesn't exist
-      middleware_dir = "#{@express_path}/middleware"
+      middleware_dir = "#{base_path}/middleware"
       FileUtils.mkdir_p(middleware_dir)
       
       # Generate API features middleware
@@ -13,7 +16,7 @@ module Tenant
       generate_filtering_middleware(middleware_dir)
       
       # Create utils directory if it doesn't exist
-      utils_dir = "#{@express_path}/utils"
+      utils_dir = "#{base_path}/utils"
       FileUtils.mkdir_p(utils_dir)
       
       # Generate API features utilities
@@ -26,343 +29,702 @@ module Tenant
     private
     
     def generate_pagination_middleware(dir)
-      pagination_file = "#{dir}/pagination.js"
+      # Determine file extension based on language
+      file_ext = @language.to_s.downcase == "typescript" ? "ts" : "js"
+      pagination_file = "#{dir}/pagination.#{file_ext}"
       
-      pagination_content = <<~JAVASCRIPT
-        /**
-         * Pagination middleware for Express.js
-         * Adds pagination functionality to API requests
-         */
-        
-        const pagination = (req, res, next) => {
-          // Default pagination values
-          const page = parseInt(req.query.page, 10) || 1;
-          const limit = parseInt(req.query.limit, 10) || 10;
+      if @language.to_s.downcase == "typescript"
+        pagination_content = <<~TYPESCRIPT
+          /**
+           * Pagination middleware for Express.js
+           * Adds pagination functionality to API requests
+           */
           
-          // Calculate skip value for database queries
-          const skip = (page - 1) * limit;
-          
-          // Add pagination object to request
-          req.pagination = {
-            page,
-            limit,
-            skip
-          };
-          
-          // Add pagination response helper to res object
-          res.paginate = (data, total) => {
-            const totalPages = Math.ceil(total / limit);
-            const hasNextPage = page < totalPages;
-            const hasPrevPage = page > 1;
-            
-            return {
-              data,
-              pagination: {
-                total,
-                totalPages,
-                currentPage: page,
-                limit,
-                hasNextPage,
-                hasPrevPage,
-                nextPage: hasNextPage ? page + 1 : null,
-                prevPage: hasPrevPage ? page - 1 : null
+          import { Request, Response, NextFunction } from 'express';
+
+          // Extend Express Request interface
+          declare global {
+            namespace Express {
+              interface Request {
+                pagination?: {
+                  page: number;
+                  limit: number;
+                  skip: number;
+                };
               }
+              interface Response {
+                paginate?: (data: any[], total: number) => {
+                  data: any[];
+                  pagination: {
+                    total: number;
+                    totalPages: number;
+                    currentPage: number;
+                    limit: number;
+                    hasNextPage: boolean;
+                    hasPrevPage: boolean;
+                    nextPage: number | null;
+                    prevPage: number | null;
+                  };
+                };
+              }
+            }
+          }
+          
+          const pagination = (req: Request, res: Response, next: NextFunction): void => {
+            // Default pagination values
+            const page = parseInt(req.query.page as string, 10) || 1;
+            const limit = parseInt(req.query.limit as string, 10) || 10;
+            
+            // Calculate skip value for database queries
+            const skip = (page - 1) * limit;
+            
+            // Add pagination object to request
+            req.pagination = {
+              page,
+              limit,
+              skip
             };
+            
+            // Add pagination response helper to res object
+            res.paginate = (data: any[], total: number) => {
+              const totalPages = Math.ceil(total / limit);
+              const hasNextPage = page < totalPages;
+              const hasPrevPage = page > 1;
+              
+              return {
+                data,
+                pagination: {
+                  total,
+                  totalPages,
+                  currentPage: page,
+                  limit,
+                  hasNextPage,
+                  hasPrevPage,
+                  nextPage: hasNextPage ? page + 1 : null,
+                  prevPage: hasPrevPage ? page - 1 : null
+                }
+              };
+            };
+            
+            next();
           };
           
-          next();
-        };
-        
-        module.exports = pagination;
-      JAVASCRIPT
+          export default pagination;
+        TYPESCRIPT
+      else
+        pagination_content = <<~JAVASCRIPT
+          /**
+           * Pagination middleware for Express.js
+           * Adds pagination functionality to API requests
+           */
+          
+          const pagination = (req, res, next) => {
+            // Default pagination values
+            const page = parseInt(req.query.page, 10) || 1;
+            const limit = parseInt(req.query.limit, 10) || 10;
+            
+            // Calculate skip value for database queries
+            const skip = (page - 1) * limit;
+            
+            // Add pagination object to request
+            req.pagination = {
+              page,
+              limit,
+              skip
+            };
+            
+            // Add pagination response helper to res object
+            res.paginate = (data, total) => {
+              const totalPages = Math.ceil(total / limit);
+              const hasNextPage = page < totalPages;
+              const hasPrevPage = page > 1;
+              
+              return {
+                data,
+                pagination: {
+                  total,
+                  totalPages,
+                  currentPage: page,
+                  limit,
+                  hasNextPage,
+                  hasPrevPage,
+                  nextPage: hasNextPage ? page + 1 : null,
+                  prevPage: hasPrevPage ? page - 1 : null
+                }
+              };
+            };
+            
+            next();
+          };
+          
+          module.exports = pagination;
+        JAVASCRIPT
+      end
       
       File.write(pagination_file, pagination_content)
       log_info("Generated pagination middleware at #{pagination_file}")
     end
     
     def generate_sorting_middleware(dir)
-      sorting_file = "#{dir}/sorting.js"
+      # Determine file extension based on language
+      file_ext = @language.to_s.downcase == "typescript" ? "ts" : "js"
+      sorting_file = "#{dir}/sorting.#{file_ext}"
       
-      sorting_content = <<~JAVASCRIPT
-        /**
-         * Sorting middleware for Express.js
-         * Adds sorting functionality to API requests
-         */
-        
-        const sorting = (defaultSort = { createdAt: -1 }) => {
-          return (req, res, next) => {
-            // Get sort parameter from query string
-            const { sort } = req.query;
-            
-            // Initialize sort object with default sort
-            let sortObj = { ...defaultSort };
-            
-            if (sort) {
-              // Parse sort parameter (format: field:direction,field:direction)
-              // Example: name:asc,createdAt:desc
-              const sortParams = sort.split(',');
-              
-              sortObj = {};
-              
-              sortParams.forEach(param => {
-                const [field, direction] = param.split(':');
-                
-                if (field && direction) {
-                  // Convert direction to MongoDB format (1 for asc, -1 for desc)
-                  sortObj[field] = direction.toLowerCase() === 'asc' ? 1 : -1;
-                }
-              });
+      if @language.to_s.downcase == "typescript"
+        sorting_content = <<~TYPESCRIPT
+          /**
+           * Sorting middleware for Express.js
+           * Adds sorting functionality to API requests
+           */
+          
+          import { Request, Response, NextFunction } from 'express';
+
+          // Extend Express Request interface
+          declare global {
+            namespace Express {
+              interface Request {
+                sorting?: Record<string, 1 | -1>;
+              }
             }
-            
-            // Add sort object to request
-            req.sorting = sortObj;
-            
-            next();
+          }
+          
+          interface SortOptions {
+            [key: string]: 1 | -1;
+          }
+          
+          const sorting = (defaultSort: SortOptions = { createdAt: -1 }) => {
+            return (req: Request, res: Response, next: NextFunction): void => {
+              // Get sort parameter from query string
+              const sort = req.query.sort as string;
+              
+              // Initialize sort object with default sort
+              let sortObj: SortOptions = { ...defaultSort };
+              
+              if (sort) {
+                // Parse sort parameter (format: field:direction,field:direction)
+                // Example: name:asc,createdAt:desc
+                const sortParams = sort.split(',');
+                
+                sortObj = {};
+                
+                sortParams.forEach(param => {
+                  const [field, direction] = param.split(':');
+                  
+                  if (field && direction) {
+                    // Convert direction to MongoDB format (1 for asc, -1 for desc)
+                    sortObj[field] = direction.toLowerCase() === 'asc' ? 1 : -1;
+                  }
+                });
+              }
+              
+              // Add sort object to request
+              req.sorting = sortObj;
+              
+              next();
+            };
           };
-        };
-        
-        module.exports = sorting;
-      JAVASCRIPT
+          
+          export default sorting;
+        TYPESCRIPT
+      else
+        sorting_content = <<~JAVASCRIPT
+          /**
+           * Sorting middleware for Express.js
+           * Adds sorting functionality to API requests
+           */
+          
+          const sorting = (defaultSort = { createdAt: -1 }) => {
+            return (req, res, next) => {
+              // Get sort parameter from query string
+              const { sort } = req.query;
+              
+              // Initialize sort object with default sort
+              let sortObj = { ...defaultSort };
+              
+              if (sort) {
+                // Parse sort parameter (format: field:direction,field:direction)
+                // Example: name:asc,createdAt:desc
+                const sortParams = sort.split(',');
+                
+                sortObj = {};
+                
+                sortParams.forEach(param => {
+                  const [field, direction] = param.split(':');
+                  
+                  if (field && direction) {
+                    // Convert direction to MongoDB format (1 for asc, -1 for desc)
+                    sortObj[field] = direction.toLowerCase() === 'asc' ? 1 : -1;
+                  }
+                });
+              }
+              
+              // Add sort object to request
+              req.sorting = sortObj;
+              
+              next();
+            };
+          };
+          
+          module.exports = sorting;
+        JAVASCRIPT
+      end
       
       File.write(sorting_file, sorting_content)
       log_info("Generated sorting middleware at #{sorting_file}")
     end
     
     def generate_filtering_middleware(dir)
-      filtering_file = "#{dir}/filtering.js"
+      # Determine file extension based on language
+      file_ext = @language.to_s.downcase == "typescript" ? "ts" : "js"
+      filtering_file = "#{dir}/filtering.#{file_ext}"
       
-      filtering_content = <<~JAVASCRIPT
-        /**
-         * Filtering middleware for Express.js
-         * Adds filtering functionality to API requests
-         */
-        
-        const filtering = (allowedFields = []) => {
-          return (req, res, next) => {
-            // Get filter parameters from query string
-            const { filter } = req.query;
-            
-            // Initialize filter object
-            let filterObj = {};
-            
-            if (filter) {
-              try {
-                // Try to parse JSON filter
-                const parsedFilter = JSON.parse(filter);
-                
-                // If allowedFields is provided, only include those fields
-                if (allowedFields.length > 0) {
-                  Object.keys(parsedFilter).forEach(key => {
-                    if (allowedFields.includes(key)) {
-                      filterObj[key] = parsedFilter[key];
-                    }
-                  });
-                } else {
-                  filterObj = parsedFilter;
-                }
-              } catch (error) {
-                // If JSON parsing fails, try to parse as simple key-value pairs
-                // Format: key1:value1,key2:value2
-                const filterParams = filter.split(',');
-                
-                filterParams.forEach(param => {
-                  const [key, value] = param.split(':');
-                  
-                  if (key && value && (allowedFields.length === 0 || allowedFields.includes(key))) {
-                    // Handle special operators
-                    if (value.startsWith('gt:')) {
-                      filterObj[key] = { $gt: value.substring(3) };
-                    } else if (value.startsWith('lt:')) {
-                      filterObj[key] = { $lt: value.substring(3) };
-                    } else if (value.startsWith('gte:')) {
-                      filterObj[key] = { $gte: value.substring(4) };
-                    } else if (value.startsWith('lte:')) {
-                      filterObj[key] = { $lte: value.substring(4) };
-                    } else if (value.startsWith('ne:')) {
-                      filterObj[key] = { $ne: value.substring(3) };
-                    } else if (value.startsWith('regex:')) {
-                      filterObj[key] = { $regex: value.substring(6), $options: 'i' };
-                    } else {
-                      filterObj[key] = value;
-                    }
-                  }
-                });
+      if @language.to_s.downcase == "typescript"
+        filtering_content = <<~TYPESCRIPT
+          /**
+           * Filtering middleware for Express.js
+           * Adds filtering functionality to API requests
+           */
+          
+          import { Request, Response, NextFunction } from 'express';
+
+          // Extend Express Request interface
+          declare global {
+            namespace Express {
+              interface Request {
+                filtering?: Record<string, any>;
               }
             }
-            
-            // Add filter object to request
-            req.filtering = filterObj;
-            
-            next();
+          }
+          
+          const filtering = (allowedFields: string[] = []) => {
+            return (req: Request, res: Response, next: NextFunction): void => {
+              // Get filter parameters from query string
+              const filter = req.query.filter as string;
+              
+              // Initialize filter object
+              let filterObj: Record<string, any> = {};
+              
+              if (filter) {
+                try {
+                  // Try to parse JSON filter
+                  const parsedFilter = JSON.parse(filter);
+                  
+                  // If allowedFields is provided, only include those fields
+                  if (allowedFields.length > 0) {
+                    Object.keys(parsedFilter).forEach(key => {
+                      if (allowedFields.includes(key)) {
+                        filterObj[key] = parsedFilter[key];
+                      }
+                    });
+                  } else {
+                    filterObj = parsedFilter;
+                  }
+                } catch (error) {
+                  // If JSON parsing fails, try to parse as simple key-value pairs
+                  // Format: key1:value1,key2:value2
+                  const filterParams = filter.split(',');
+                  
+                  filterParams.forEach(param => {
+                    const [key, value] = param.split(':');
+                    
+                    if (key && value && (allowedFields.length === 0 || allowedFields.includes(key))) {
+                      // Handle special operators
+                      if (value.startsWith('gt:')) {
+                        filterObj[key] = { $gt: value.substring(3) };
+                      } else if (value.startsWith('lt:')) {
+                        filterObj[key] = { $lt: value.substring(3) };
+                      } else if (value.startsWith('gte:')) {
+                        filterObj[key] = { $gte: value.substring(4) };
+                      } else if (value.startsWith('lte:')) {
+                        filterObj[key] = { $lte: value.substring(4) };
+                      } else if (value.startsWith('ne:')) {
+                        filterObj[key] = { $ne: value.substring(3) };
+                      } else if (value.startsWith('regex:')) {
+                        filterObj[key] = { $regex: value.substring(6), $options: 'i' };
+                      } else {
+                        filterObj[key] = value;
+                      }
+                    }
+                  });
+                }
+              }
+              
+              // Add filter object to request
+              req.filtering = filterObj;
+              
+              next();
+            };
           };
-        };
-        
-        module.exports = filtering;
-      JAVASCRIPT
+          
+          export default filtering;
+        TYPESCRIPT
+      else
+        filtering_content = <<~JAVASCRIPT
+          /**
+           * Filtering middleware for Express.js
+           * Adds filtering functionality to API requests
+           */
+          
+          const filtering = (allowedFields = []) => {
+            return (req, res, next) => {
+              // Get filter parameters from query string
+              const { filter } = req.query;
+              
+              // Initialize filter object
+              let filterObj = {};
+              
+              if (filter) {
+                try {
+                  // Try to parse JSON filter
+                  const parsedFilter = JSON.parse(filter);
+                  
+                  // If allowedFields is provided, only include those fields
+                  if (allowedFields.length > 0) {
+                    Object.keys(parsedFilter).forEach(key => {
+                      if (allowedFields.includes(key)) {
+                        filterObj[key] = parsedFilter[key];
+                      }
+                    });
+                  } else {
+                    filterObj = parsedFilter;
+                  }
+                } catch (error) {
+                  // If JSON parsing fails, try to parse as simple key-value pairs
+                  // Format: key1:value1,key2:value2
+                  const filterParams = filter.split(',');
+                  
+                  filterParams.forEach(param => {
+                    const [key, value] = param.split(':');
+                    
+                    if (key && value && (allowedFields.length === 0 || allowedFields.includes(key))) {
+                      // Handle special operators
+                      if (value.startsWith('gt:')) {
+                        filterObj[key] = { $gt: value.substring(3) };
+                      } else if (value.startsWith('lt:')) {
+                        filterObj[key] = { $lt: value.substring(3) };
+                      } else if (value.startsWith('gte:')) {
+                        filterObj[key] = { $gte: value.substring(4) };
+                      } else if (value.startsWith('lte:')) {
+                        filterObj[key] = { $lte: value.substring(4) };
+                      } else if (value.startsWith('ne:')) {
+                        filterObj[key] = { $ne: value.substring(3) };
+                      } else if (value.startsWith('regex:')) {
+                        filterObj[key] = { $regex: value.substring(6), $options: 'i' };
+                      } else {
+                        filterObj[key] = value;
+                      }
+                    }
+                  });
+                }
+              }
+              
+              // Add filter object to request
+              req.filtering = filterObj;
+              
+              next();
+            };
+          };
+          
+          module.exports = filtering;
+        JAVASCRIPT
+      end
       
       File.write(filtering_file, filtering_content)
       log_info("Generated filtering middleware at #{filtering_file}")
     end
     
     def generate_api_features_utils(dir)
-      api_features_file = "#{dir}/apiFeatures.js"
+      # Determine file extension based on language
+      file_ext = @language.to_s.downcase == "typescript" ? "ts" : "js"
+      api_features_file = "#{dir}/apiFeatures.#{file_ext}"
       
-      api_features_content = <<~JAVASCRIPT
-        /**
-         * API Features utility for Express.js
-         * Provides helper functions for pagination, sorting, and filtering
-         */
-        
-        class APIFeatures {
-          constructor(query, queryString) {
-            this.query = query;
-            this.queryString = queryString;
+      if @language.to_s.downcase == "typescript"
+        api_features_content = <<~TYPESCRIPT
+          /**
+           * API Features utility for Express.js
+           * Provides helper functions for pagination, sorting, and filtering
+           */
+          
+          import { Query } from 'mongoose';
+
+          interface QueryString {
+            [key: string]: any;
+            filter?: string;
+            sort?: string;
+            page?: string;
+            limit?: string;
           }
           
-          /**
-           * Apply filtering to the query
-           * @param {Array} allowedFields - List of fields that can be filtered
-           * @returns {APIFeatures} - Returns this for method chaining
-           */
-          filter(allowedFields = []) {
-            const { filter } = this.queryString;
+          class APIFeatures<T> {
+            query: Query<T[], T>;
+            queryString: QueryString;
             
-            if (filter) {
-              try {
-                // Try to parse JSON filter
-                const parsedFilter = JSON.parse(filter);
-                
-                // If allowedFields is provided, only include those fields
-                if (allowedFields.length > 0) {
-                  const filteredObj = {};
+            constructor(query: Query<T[], T>, queryString: QueryString) {
+              this.query = query;
+              this.queryString = queryString;
+            }
+            
+            /**
+             * Apply filtering to the query
+             * @param {Array} allowedFields - List of fields that can be filtered
+             * @returns {APIFeatures} - Returns this for method chaining
+             */
+            filter(allowedFields: string[] = []): APIFeatures<T> {
+              const { filter } = this.queryString;
+              
+              if (filter) {
+                try {
+                  // Try to parse JSON filter
+                  const parsedFilter = JSON.parse(filter);
                   
-                  Object.keys(parsedFilter).forEach(key => {
-                    if (allowedFields.includes(key)) {
-                      filteredObj[key] = parsedFilter[key];
+                  // If allowedFields is provided, only include those fields
+                  if (allowedFields.length > 0) {
+                    const filteredObj: Record<string, any> = {};
+                    
+                    Object.keys(parsedFilter).forEach(key => {
+                      if (allowedFields.includes(key)) {
+                        filteredObj[key] = parsedFilter[key];
+                      }
+                    });
+                    
+                    this.query = this.query.find(filteredObj);
+                  } else {
+                    this.query = this.query.find(parsedFilter);
+                  }
+                } catch (error) {
+                  // If JSON parsing fails, try to parse as simple key-value pairs
+                  // Format: key1:value1,key2:value2
+                  const filterParams = filter.split(',');
+                  const filterObj: Record<string, any> = {};
+                  
+                  filterParams.forEach(param => {
+                    const [key, value] = param.split(':');
+                    
+                    if (key && value && (allowedFields.length === 0 || allowedFields.includes(key))) {
+                      // Handle special operators
+                      if (value.startsWith('gt:')) {
+                        filterObj[key] = { $gt: value.substring(3) };
+                      } else if (value.startsWith('lt:')) {
+                        filterObj[key] = { $lt: value.substring(3) };
+                      } else if (value.startsWith('gte:')) {
+                        filterObj[key] = { $gte: value.substring(4) };
+                      } else if (value.startsWith('lte:')) {
+                        filterObj[key] = { $lte: value.substring(4) };
+                      } else if (value.startsWith('ne:')) {
+                        filterObj[key] = { $ne: value.substring(3) };
+                      } else if (value.startsWith('regex:')) {
+                        filterObj[key] = { $regex: value.substring(6), $options: 'i' };
+                      } else {
+                        filterObj[key] = value;
+                      }
                     }
                   });
                   
-                  this.query = this.query.find(filteredObj);
-                } else {
-                  this.query = this.query.find(parsedFilter);
+                  this.query = this.query.find(filterObj);
                 }
-              } catch (error) {
-                // If JSON parsing fails, try to parse as simple key-value pairs
-                const filterParams = filter.split(',');
-                const filterObj = {};
+              }
+              
+              return this;
+            }
+            
+            /**
+             * Apply sorting to the query
+             * @param {Object} defaultSort - Default sort object
+             * @returns {APIFeatures} - Returns this for method chaining
+             */
+            sort(defaultSort: Record<string, 1 | -1> = { createdAt: -1 }): APIFeatures<T> {
+              const { sort } = this.queryString;
+              
+              if (sort) {
+                // Parse sort parameter (format: field:direction,field:direction)
+                // Example: name:asc,createdAt:desc
+                const sortParams = sort.split(',');
+                const sortObj: Record<string, 1 | -1> = {};
                 
-                filterParams.forEach(param => {
-                  const [key, value] = param.split(':');
+                sortParams.forEach(param => {
+                  const [field, direction] = param.split(':');
                   
-                  if (key && value && (allowedFields.length === 0 || allowedFields.includes(key))) {
-                    // Handle special operators
-                    if (value.startsWith('gt:')) {
-                      filterObj[key] = { $gt: value.substring(3) };
-                    } else if (value.startsWith('lt:')) {
-                      filterObj[key] = { $lt: value.substring(3) };
-                    } else if (value.startsWith('gte:')) {
-                      filterObj[key] = { $gte: value.substring(4) };
-                    } else if (value.startsWith('lte:')) {
-                      filterObj[key] = { $lte: value.substring(4) };
-                    } else if (value.startsWith('ne:')) {
-                      filterObj[key] = { $ne: value.substring(3) };
-                    } else if (value.startsWith('regex:')) {
-                      filterObj[key] = { $regex: value.substring(6), $options: 'i' };
-                    } else {
-                      filterObj[key] = value;
-                    }
+                  if (field && direction) {
+                    // Convert direction to MongoDB format (1 for asc, -1 for desc)
+                    sortObj[field] = direction.toLowerCase() === 'asc' ? 1 : -1;
                   }
                 });
                 
-                this.query = this.query.find(filterObj);
+                this.query = this.query.sort(sortObj);
+              } else {
+                this.query = this.query.sort(defaultSort);
               }
+              
+              return this;
             }
             
-            return this;
+            /**
+             * Apply pagination to the query
+             * @returns {APIFeatures} - Returns this for method chaining
+             */
+            paginate(): APIFeatures<T> {
+              const page = parseInt(this.queryString.page || '1', 10);
+              const limit = parseInt(this.queryString.limit || '10', 10);
+              const skip = (page - 1) * limit;
+              
+              this.query = this.query.skip(skip).limit(limit);
+              
+              return this;
+            }
           }
           
+          export default APIFeatures;
+        TYPESCRIPT
+      else
+        api_features_content = <<~JAVASCRIPT
           /**
-           * Apply sorting to the query
-           * @param {Object} defaultSort - Default sort object
-           * @returns {APIFeatures} - Returns this for method chaining
+           * API Features utility for Express.js
+           * Provides helper functions for pagination, sorting, and filtering
            */
-          sort(defaultSort = { createdAt: -1 }) {
-            const { sort } = this.queryString;
+          
+          class APIFeatures {
+            constructor(query, queryString) {
+              this.query = query;
+              this.queryString = queryString;
+            }
             
-            if (sort) {
-              const sortParams = sort.split(',');
-              const sortObj = {};
+            /**
+             * Apply filtering to the query
+             * @param {Array} allowedFields - List of fields that can be filtered
+             * @returns {APIFeatures} - Returns this for method chaining
+             */
+            filter(allowedFields = []) {
+              const { filter } = this.queryString;
               
-              sortParams.forEach(param => {
-                const [field, direction] = param.split(':');
-                
-                if (field && direction) {
-                  sortObj[field] = direction.toLowerCase() === 'asc' ? 1 : -1;
+              if (filter) {
+                try {
+                  // Try to parse JSON filter
+                  const parsedFilter = JSON.parse(filter);
+                  
+                  // If allowedFields is provided, only include those fields
+                  if (allowedFields.length > 0) {
+                    const filteredObj = {};
+                    
+                    Object.keys(parsedFilter).forEach(key => {
+                      if (allowedFields.includes(key)) {
+                        filteredObj[key] = parsedFilter[key];
+                      }
+                    });
+                    
+                    this.query = this.query.find(filteredObj);
+                  } else {
+                    this.query = this.query.find(parsedFilter);
+                  }
+                } catch (error) {
+                  // If JSON parsing fails, try to parse as simple key-value pairs
+                  // Format: key1:value1,key2:value2
+                  const filterParams = filter.split(',');
+                  const filterObj = {};
+                  
+                  filterParams.forEach(param => {
+                    const [key, value] = param.split(':');
+                    
+                    if (key && value && (allowedFields.length === 0 || allowedFields.includes(key))) {
+                      // Handle special operators
+                      if (value.startsWith('gt:')) {
+                        filterObj[key] = { $gt: value.substring(3) };
+                      } else if (value.startsWith('lt:')) {
+                        filterObj[key] = { $lt: value.substring(3) };
+                      } else if (value.startsWith('gte:')) {
+                        filterObj[key] = { $gte: value.substring(4) };
+                      } else if (value.startsWith('lte:')) {
+                        filterObj[key] = { $lte: value.substring(4) };
+                      } else if (value.startsWith('ne:')) {
+                        filterObj[key] = { $ne: value.substring(3) };
+                      } else if (value.startsWith('regex:')) {
+                        filterObj[key] = { $regex: value.substring(6), $options: 'i' };
+                      } else {
+                        filterObj[key] = value;
+                      }
+                    }
+                  });
+                  
+                  this.query = this.query.find(filterObj);
                 }
-              });
+              }
               
-              this.query = this.query.sort(sortObj);
-            } else {
-              this.query = this.query.sort(defaultSort);
+              return this;
             }
             
-            return this;
-          }
-          
-          /**
-           * Apply pagination to the query
-           * @returns {APIFeatures} - Returns this for method chaining
-           */
-          paginate() {
-            const page = parseInt(this.queryString.page, 10) || 1;
-            const limit = parseInt(this.queryString.limit, 10) || 10;
-            const skip = (page - 1) * limit;
-            
-            this.query = this.query.skip(skip).limit(limit);
-            
-            return this;
-          }
-          
-          /**
-           * Apply field selection to the query
-           * @returns {APIFeatures} - Returns this for method chaining
-           */
-          select() {
-            const { fields } = this.queryString;
-            
-            if (fields) {
-              const fieldList = fields.split(',').join(' ');
-              this.query = this.query.select(fieldList);
+            /**
+             * Apply sorting to the query
+             * @param {Object} defaultSort - Default sort object
+             * @returns {APIFeatures} - Returns this for method chaining
+             */
+            sort(defaultSort = { createdAt: -1 }) {
+              const { sort } = this.queryString;
+              
+              if (sort) {
+                // Parse sort parameter (format: field:direction,field:direction)
+                // Example: name:asc,createdAt:desc
+                const sortParams = sort.split(',');
+                const sortObj = {};
+                
+                sortParams.forEach(param => {
+                  const [field, direction] = param.split(':');
+                  
+                  if (field && direction) {
+                    // Convert direction to MongoDB format (1 for asc, -1 for desc)
+                    sortObj[field] = direction.toLowerCase() === 'asc' ? 1 : -1;
+                  }
+                });
+                
+                this.query = this.query.sort(sortObj);
+              } else {
+                this.query = this.query.sort(defaultSort);
+              }
+              
+              return this;
             }
             
-            return this;
+            /**
+             * Apply pagination to the query
+             * @returns {APIFeatures} - Returns this for method chaining
+             */
+            paginate() {
+              const page = parseInt(this.queryString.page || '1', 10);
+              const limit = parseInt(this.queryString.limit || '10', 10);
+              const skip = (page - 1) * limit;
+              
+              this.query = this.query.skip(skip).limit(limit);
+              
+              return this;
+            }
           }
-        }
-        
-        module.exports = APIFeatures;
-      JAVASCRIPT
+          
+          module.exports = APIFeatures;
+        JAVASCRIPT
+      end
       
       File.write(api_features_file, api_features_content)
       log_info("Generated API features utility at #{api_features_file}")
     end
     
     def update_controller_templates
+      # Determine templates directory based on language
+      base_path = @language.to_s.downcase == "typescript" ? "#{@express_path}/src" : @express_path
+      
       # Update controller templates based on database type
       case @database_type.to_s
-      when 'mongodb'
-        update_mongodb_controller_template
-      when 'sequelize'
-        update_sequelize_controller_template
+      when 'mongodb', 'mongo'
+        update_mongodb_controller_template(base_path)
+      when 'sequelize', 'sql', 'mysql', 'postgres', 'postgresql'
+        update_sequelize_controller_template(base_path)
       when 'prisma'
-        update_prisma_controller_template
+        update_prisma_controller_template(base_path)
       else
         log_info("Unknown database type: #{@database_type}, skipping controller template update")
       end
     end
     
-    def update_mongodb_controller_template
+    def update_mongodb_controller_template(base_path)
       # Create templates directory if it doesn't exist
-      templates_dir = "#{@express_path}/templates"
+      templates_dir = "#{base_path}/templates"
       FileUtils.mkdir_p(templates_dir)
       
       controller_template_file = "#{templates_dir}/controller.js.template"
@@ -439,9 +801,9 @@ module Tenant
       log_info("Updated MongoDB controller template at #{controller_template_file}")
     end
     
-    def update_sequelize_controller_template
+    def update_sequelize_controller_template(base_path)
       # Create templates directory if it doesn't exist
-      templates_dir = "#{@express_path}/templates"
+      templates_dir = "#{base_path}/templates"
       FileUtils.mkdir_p(templates_dir)
       
       controller_template_file = "#{templates_dir}/controller.js.template"
@@ -532,9 +894,9 @@ module Tenant
       log_info("Updated Sequelize controller template at #{controller_template_file}")
     end
     
-    def update_prisma_controller_template
+    def update_prisma_controller_template(base_path)
       # Create templates directory if it doesn't exist
-      templates_dir = "#{@express_path}/templates"
+      templates_dir = "#{base_path}/templates"
       FileUtils.mkdir_p(templates_dir)
       
       controller_template_file = "#{templates_dir}/controller.js.template"

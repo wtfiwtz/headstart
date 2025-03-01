@@ -17,6 +17,21 @@ The Express.js generator has been refactored into separate concerns to improve m
 - **ExpressControllerGenerator**: Generates controllers for MongoDB, Sequelize, and Prisma.
 - **ExpressRouteGenerator**: Generates routes for Express.js applications.
 - **ExpressApiFeaturesHandler**: Adds advanced API features like pagination, sorting, and filtering to Express.js applications.
+- **ExpressBullMQHandler**: Adds background job processing capabilities using BullMQ and Redis.
+
+## Supported Languages
+
+The Express.js generator supports both JavaScript and TypeScript:
+
+- **JavaScript**: Traditional Node.js development with CommonJS modules.
+- **TypeScript**: Type-safe development with modern ES modules and static type checking.
+
+When using TypeScript, the generator:
+- Creates a proper `tsconfig.json` file
+- Adds TypeScript-specific dependencies
+- Generates TypeScript files with proper type definitions
+- Structures the project with a `src` directory and `dist` output
+- Adds appropriate build and development scripts
 
 ## Supported Database Types
 
@@ -92,6 +107,24 @@ Select only the fields you need:
 GET /api/users?fields=name,email,role
 ```
 
+## Background Job Processing
+
+The `ExpressBullMQHandler` concern adds background job processing capabilities to your Express.js application using BullMQ and Redis:
+
+### Features
+
+- Queue management for different job types
+- Job scheduling and retries
+- Job progress tracking
+- Error handling and monitoring
+- REST API for job management
+
+### API Endpoints
+
+- `GET /api/jobs/types` - Get all available job types
+- `POST /api/jobs/:jobType` - Add a new job to the queue
+- `GET /api/jobs/:jobType/:jobId` - Get job status
+
 ## Adding New Features
 
 To add a new feature or extend an existing one:
@@ -108,7 +141,12 @@ generator = Tenant::ExpressGenerator.new
 generator.apply_configuration({
   express_path: './out/express_app',
   database_type: :mongodb,
-  models: [...]
+  language: :typescript, # or :javascript (default)
+  models: [...],
+  batch_jobs: [
+    { name: 'email', description: 'Processes email sending tasks' },
+    { name: 'report', description: 'Generates reports asynchronously' }
+  ]
 })
 generator.execute
 ``` 

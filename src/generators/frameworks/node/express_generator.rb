@@ -31,231 +31,131 @@ module Tenant
         include Tenant::ExpressApiFeaturesHandler
         include Tenant::ExpressBullMQHandler
         
-        attr_accessor :configuration, :models
+        attr_accessor :configuration, :models, :language
         
         def initialize
-          @express_path = "#{__dir__}/../../../../out/express_app"
-          @templates_path = "#{__dir__}/../../../../templates/express"
-          @configuration = nil
+          @express_path = nil
+          @templates_path = File.join(File.dirname(__FILE__), '..', '..', '..', 'templates', 'express')
+          @configuration = {}
           @models = []
+          @language = 'javascript' # Default to JavaScript
           
           # Ensure templates directory exists
-          FileUtils.mkdir_p @templates_path
+          FileUtils.mkdir_p(@templates_path)
           
-          log_info("Initialized ExpressGenerator with express_path: #{@express_path}")
-          log_info("Templates path: #{@templates_path}")
+          log_info("Initializing Express.js generator")
         end
         
-        def apply_configuration(configuration)
-          initialize_configuration(configuration)
+        def apply_configuration(config)
+          initialize_configuration(config)
           validate_configuration
           
+          # Set language from configuration or default to JavaScript
+          @language = config[:language].to_s.downcase if config[:language]
+          log_info("Using language: #{@language}")
+          
           # Initialize BullMQ configuration if batch jobs are defined
-          initialize_bullmq_config(configuration) if configuration[:batch_jobs]
+          initialize_bullmq_config(config) if config[:batch_jobs]
           
           log_info("Configuration applied")
-          self
         end
         
-        def models(models_array)
-          @models = models_array
-          log_info("Models set: #{models_array.map(&:name).join(', ')}")
-          self
+        def models
+          @models = @configuration[:models] || []
+          log_info("Models: #{@models.map { |m| m['name'] }.join(', ')}")
+          @models
         end
         
         def execute
-          with_error_handling do
-            log_info("Executing Express.js generator")
-            
-            # Setup target directory
-            setup_target
-            
-            # Create Express.js application
-            create_express_app
-            
-            # Generate models
-            generate_models
-            
-            # Generate controllers
-            generate_controllers
-            
-            # Generate routes
-            generate_routes
-            
-            # Generate API features
-            generate_api_features
-            
-            # Generate BullMQ setup if batch jobs are defined
-            generate_bullmq_setup if @batch_jobs && @batch_jobs.any?
-            
-            log_info("Express.js application generated successfully at #{@express_path}")
-          end
-        end
-        
-        private
-        
-        def setup_target
-          return if Dir.exist?(@express_path)
+          log_info("Executing Express.js generator")
           
-          FileUtils.mkdir_p @express_path
+          # Setup target directory
+          setup_target
           
-          # Create basic Express.js application structure
-          create_express_app
-        end
-        
-        def create_express_app
-          log_info("Creating Express.js application")
+          # Create Express.js application
+          create_directory_structure(@database_type)
+          create_app_js(@database_type)
+          create_middleware_files
+          
+          # Generate database-specific files
+          generate_database_files(@database_type) if respond_to?(:generate_database_files)
           
           # Create package.json
           create_package_json(@database_type)
           
-          # Create app.js
-          create_app_js(@database_type)
+          # Generate models, controllers, and routes
+          generate_models
+          generate_controllers
+          generate_routes
           
+          # Generate API features if enabled
+          generate_api_features if @configuration[:api_features]
+          
+          # Generate BullMQ setup if batch jobs are defined
+          generate_bullmq_setup if @configuration[:batch_jobs]
+          
+          log_info("Express.js application generated successfully at #{@express_path}")
+        end
+        
+        def setup_target
+          # Create target directory if it doesn't exist
+          FileUtils.mkdir_p(@express_path) unless Dir.exist?(@express_path)
+        end
+        
+        private
+        
+        def create_directory_structure(db_type)
           # Create basic directory structure
-          create_directory_structure(@database_type)
-          
-          # Create middleware files
-          create_middleware_files
-          
-          # Initialize database if needed
-          case @database_type.to_s.downcase
-          when 'prisma'
-            initialize_prisma
-          when 'sequelize', 'sql', 'mysql', 'postgres', 'postgresql'
-            initialize_sequelize
+          %w[models controllers routes views public config].each do |dir|
+            FileUtils.mkdir_p("#{@express_path}/#{dir}")
           end
           
-          # Install dependencies if requested
-          install_dependencies if @config[:install_dependencies]
-        end
-        
-        def create_package_json(db_type)
-          # Base dependencies that are always included
-          dependencies = {
-            express: "^4.18.2",
-            "body-parser": "^1.20.2",
-            "dotenv": "^16.0.3"
-          }
+          # Create .env file with appropriate database connection string
+          env_content = "PORT=3000\n"
           
-          # Add database-specific dependencies
           case db_type.to_s.downcase
           when 'sequelize', 'sql', 'mysql', 'postgres', 'postgresql'
-            dependencies.merge!({
-              sequelize: "^6.32.0",
-              pg: "^8.11.0",        # PostgreSQL driver
-              mysql2: "^3.4.0",     # MySQL driver
-              "sequelize-cli": "^6.6.1"
-            })
+            dialect = db_type.to_s.downcase == 'mysql' ? 'mysql' : 'postgres'
+            env_content += "DATABASE_URL=#{dialect}://postgres:postgres@localhost:5432/express_app_development\n"
           when 'prisma'
-            dependencies.merge!({
-              "@prisma/client": "^4.15.0"
-            })
+            env_content += "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/express_app_development\n"
           else # Default to MongoDB
-            dependencies.merge!({
-              mongoose: "^7.0.0"
-            })
+            env_content += "MONGODB_URI=mongodb://localhost:27017/express-app\n"
           end
           
-          package_json = {
-            name: "express-app",
-            version: "1.0.0",
-            description: "Express.js application generated by Tenant",
-            main: "app.js",
-            scripts: {
-              start: "node app.js",
-              dev: "nodemon app.js"
-            },
-            dependencies: dependencies,
-            devDependencies: {
-              nodemon: "^2.0.22"
-            }
-          }
+          File.write("#{@express_path}/.env", env_content)
           
-          # Add Prisma dev dependency if using Prisma
-          if db_type.to_s.downcase == 'prisma'
-            package_json[:devDependencies]["prisma"] = "^4.15.0"
-          end
+          # Create .gitignore
+          File.write("#{@express_path}/.gitignore", "node_modules\n.env\n")
           
-          File.write("#{@express_path}/package.json", JSON.pretty_generate(package_json))
+          # Create README.md with database-specific information
+          readme_content = "# Express.js Application\n\nGenerated by Tenant\n\n"
           
-          # Create additional files for specific database types
           case db_type.to_s.downcase
-          when 'prisma'
-            create_prisma_schema
           when 'sequelize', 'sql', 'mysql', 'postgres', 'postgresql'
-            create_sequelize_config
+            readme_content += "## Database\n\nThis application uses Sequelize ORM with "
+            readme_content += (db_type.to_s.downcase == 'mysql' ? "MySQL" : "PostgreSQL")
+            readme_content += ".\n\n"
+          when 'prisma'
+            readme_content += "## Database\n\nThis application uses Prisma ORM with PostgreSQL.\n\n"
+          else # Default to MongoDB
+            readme_content += "## Database\n\nThis application uses MongoDB with Mongoose ODM.\n\n"
           end
-        end
-        
-        def create_prisma_schema
-          prisma_schema = <<~PRISMA
-            // This is your Prisma schema file,
-            // learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-            generator client {
-              provider = "prisma-client-js"
-            }
-
-            datasource db {
-              provider = "postgresql" // Change to "mysql" or "sqlite" if needed
-              url      = env("DATABASE_URL")
-            }
-            
-            // Models will be generated here during the model generation phase
-          PRISMA
           
-          FileUtils.mkdir_p("#{@express_path}/prisma")
-          File.write("#{@express_path}/prisma/schema.prisma", prisma_schema)
-        end
-        
-        def create_sequelize_config
-          sequelize_config = {
-            development: {
-              username: "postgres",
-              password: "postgres",
-              database: "express_app_development",
-              host: "127.0.0.1",
-              dialect: "postgres" # Can be changed to mysql, sqlite, etc.
-            },
-            test: {
-              username: "postgres",
-              password: "postgres",
-              database: "express_app_test",
-              host: "127.0.0.1",
-              dialect: "postgres"
-            },
-            production: {
-              use_env_variable: "DATABASE_URL",
-              dialect: "postgres"
-            }
-          }
+          readme_content += "## Getting Started\n\n"
+          readme_content += "1. Install dependencies: `npm install`\n"
+          readme_content += "2. Set up your database connection in `.env`\n"
           
-          FileUtils.mkdir_p("#{@express_path}/config")
-          File.write("#{@express_path}/config/config.json", JSON.pretty_generate(sequelize_config))
+          if db_type.to_s.downcase == 'prisma'
+            readme_content += "3. Generate Prisma client: `npx prisma generate`\n"
+            readme_content += "4. Run migrations: `npx prisma migrate dev`\n"
+          elsif ['sequelize', 'sql', 'mysql', 'postgres', 'postgresql'].include?(db_type.to_s.downcase)
+            readme_content += "3. Run migrations: `npx sequelize-cli db:migrate`\n"
+          end
           
-          # Create Sequelize initialization file
-          sequelize_init = <<~JS
-            const { Sequelize } = require('sequelize');
-            const env = process.env.NODE_ENV || 'development';
-            const config = require('./config/config.json')[env];
-            
-            let sequelize;
-            if (config.use_env_variable) {
-              sequelize = new Sequelize(process.env[config.use_env_variable], config);
-            } else {
-              sequelize = new Sequelize(
-                config.database,
-                config.username,
-                config.password,
-                config
-              );
-            }
-            
-            module.exports = sequelize;
-          JS
+          readme_content += "#{db_type.to_s.downcase == 'prisma' || ['sequelize', 'sql', 'mysql', 'postgres', 'postgresql'].include?(db_type.to_s.downcase) ? '5' : '3'}. Start the server: `npm run dev`\n"
           
-          File.write("#{@express_path}/models/index.js", sequelize_init)
+          File.write("#{@express_path}/README.md", readme_content)
         end
         
         def create_app_js(db_type)
@@ -335,60 +235,6 @@ module Tenant
           app_js_content = [common_setup, db_setup, common_end].join("\n\n")
           
           File.write("#{@express_path}/app.js", app_js_content)
-        end
-        
-        def create_directory_structure(db_type)
-          # Create basic directory structure
-          %w[models controllers routes views public config].each do |dir|
-            FileUtils.mkdir_p("#{@express_path}/#{dir}")
-          end
-          
-          # Create .env file with appropriate database connection string
-          env_content = "PORT=3000\n"
-          
-          case db_type.to_s.downcase
-          when 'sequelize', 'sql', 'mysql', 'postgres', 'postgresql'
-            dialect = db_type.to_s.downcase == 'mysql' ? 'mysql' : 'postgres'
-            env_content += "DATABASE_URL=#{dialect}://postgres:postgres@localhost:5432/express_app_development\n"
-          when 'prisma'
-            env_content += "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/express_app_development\n"
-          else # Default to MongoDB
-            env_content += "MONGODB_URI=mongodb://localhost:27017/express-app\n"
-          end
-          
-          File.write("#{@express_path}/.env", env_content)
-          
-          # Create .gitignore
-          File.write("#{@express_path}/.gitignore", "node_modules\n.env\n")
-          
-          # Create README.md with database-specific information
-          readme_content = "# Express.js Application\n\nGenerated by Tenant\n\n"
-          
-          case db_type.to_s.downcase
-          when 'sequelize', 'sql', 'mysql', 'postgres', 'postgresql'
-            readme_content += "## Database\n\nThis application uses Sequelize ORM with "
-            readme_content += (db_type.to_s.downcase == 'mysql' ? "MySQL" : "PostgreSQL")
-            readme_content += ".\n\n"
-          when 'prisma'
-            readme_content += "## Database\n\nThis application uses Prisma ORM with PostgreSQL.\n\n"
-          else # Default to MongoDB
-            readme_content += "## Database\n\nThis application uses MongoDB with Mongoose ODM.\n\n"
-          end
-          
-          readme_content += "## Getting Started\n\n"
-          readme_content += "1. Install dependencies: `npm install`\n"
-          readme_content += "2. Set up your database connection in `.env`\n"
-          
-          if db_type.to_s.downcase == 'prisma'
-            readme_content += "3. Generate Prisma client: `npx prisma generate`\n"
-            readme_content += "4. Run migrations: `npx prisma migrate dev`\n"
-          elsif ['sequelize', 'sql', 'mysql', 'postgres', 'postgresql'].include?(db_type.to_s.downcase)
-            readme_content += "3. Run migrations: `npx sequelize-cli db:migrate`\n"
-          end
-          
-          readme_content += "#{db_type.to_s.downcase == 'prisma' || ['sequelize', 'sql', 'mysql', 'postgres', 'postgresql'].include?(db_type.to_s.downcase) ? '5' : '3'}. Start the server: `npm run dev`\n"
-          
-          File.write("#{@express_path}/README.md", readme_content)
         end
         
         def generate_models
