@@ -1,6 +1,6 @@
 # Dwelling Model Builder
 
-This tool allows you to generate Ruby on Rails or Express.js applications from YAML model definitions.
+This tool allows you to generate Ruby on Rails, Express.js, or Python applications from YAML model definitions.
 
 ## Features
 
@@ -15,6 +15,12 @@ This tool allows you to generate Ruby on Rails or Express.js applications from Y
   - Model and controller generation
   - API routes
   - Advanced API features (pagination, sorting, filtering)
+  - Background job processing with BullMQ
+- Generate Python API microservices with configurable options:
+  - Frameworks (FastAPI, Flask, Django)
+  - Database types (SQLAlchemy, MongoDB, Pony ORM, Peewee, Django ORM)
+  - Advanced API features (pagination, sorting, filtering)
+  - Background job processing with Celery
 
 ## Usage
 
@@ -27,7 +33,7 @@ bin/generate --config config/application.yml --models config/models.yml
 # Generate using a combined configuration and models file
 bin/generate --file models.yml
 
-# Specify generator type (ruby or express)
+# Specify generator type (ruby, express, or python)
 bin/generate --file models.yml --generator express
 
 # Show help
@@ -80,6 +86,20 @@ gems:
 # Express.js specific configuration
 express_path: './out/express_app'
 database_type: mongodb  # mongodb, sequelize, prisma
+
+# Python specific configuration
+python_path: './out/python_app'
+framework_type: fastapi  # fastapi, flask, django
+database_type: sqlalchemy  # sqlalchemy, mongodb, pony, peewee, django-orm
+
+# Batch job configuration
+batch_jobs:
+  - name: process_data
+    description: Process data in the background
+    processing_time: 5000
+  - name: send_emails
+    description: Send batch emails to users
+    processing_time: 3000
 
 # Model definitions
 models:
@@ -210,6 +230,73 @@ Select only the fields you need:
 GET /api/users?fields=name,email,role
 ```
 
+## Python API Features
+
+The Python generator includes similar API features for building robust RESTful APIs:
+
+### Pagination
+
+```
+GET /api/users?page=2&size=10
+```
+
+### Sorting
+
+```
+GET /api/users?sort=name:asc,created_at:desc
+```
+
+### Filtering
+
+```
+GET /api/users?filter=age:gt:18,name:regex:john
+```
+
+## Background Job Processing
+
+### Express.js with BullMQ
+
+The Express.js generator includes support for background job processing using BullMQ with Redis as the message broker:
+
+```
+POST /api/jobs/process_data
+{
+  "userId": 123,
+  "dataType": "reports"
+}
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "jobId": "550e8400-e29b-41d4-a716-446655440000",
+  "message": "Process_data job added to queue"
+}
+```
+
+Check job status:
+
+```
+GET /api/jobs/process_data/550e8400-e29b-41d4-a716-446655440000
+```
+
+### Python with Celery
+
+The Python generator includes support for background task processing using Celery with Redis as the message broker:
+
+```python
+from app.tasks.process_data import process_data
+
+# Add task to queue
+result = process_data.delay(data_id=123)
+
+# Check task status
+task_id = result.id
+task_status = result.status
+```
+
 ## Supported Association Types
 
 - `has_one`
@@ -251,6 +338,19 @@ For Express/Sequelize:
 - `DATE`
 - `BOOLEAN`
 - `JSON`
+
+For Python:
+- `string`
+- `text`
+- `integer`
+- `float`
+- `decimal`
+- `datetime`
+- `date`
+- `time`
+- `boolean`
+- `json`
+- `array`
 
 ## License
 

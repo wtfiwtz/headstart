@@ -11,6 +11,7 @@ require_relative '../../concerns/express/express_route_generator'
 require_relative '../../concerns/express_app_structure_generator'
 require_relative '../../concerns/environment_config_generator'
 require_relative '../../concerns/express/api_features_handler'
+require_relative '../../concerns/express/bullmq_handler'
 
 module Tenant
   module Frameworks
@@ -28,6 +29,7 @@ module Tenant
         include Tenant::ExpressAppStructureGenerator
         include Tenant::EnvironmentConfigGenerator
         include Tenant::ExpressApiFeaturesHandler
+        include Tenant::ExpressBullMQHandler
         
         attr_accessor :configuration, :models
         
@@ -47,6 +49,10 @@ module Tenant
         def apply_configuration(configuration)
           initialize_configuration(configuration)
           validate_configuration
+          
+          # Initialize BullMQ configuration if batch jobs are defined
+          initialize_bullmq_config(configuration) if configuration[:batch_jobs]
+          
           log_info("Configuration applied")
           self
         end
@@ -59,10 +65,13 @@ module Tenant
         
         def execute
           with_error_handling do
-            log_info("Starting Express.js application generation")
+            log_info("Executing Express.js generator")
             
-            # Setup the target directory
+            # Setup target directory
             setup_target
+            
+            # Create Express.js application
+            create_express_app
             
             # Generate models
             generate_models
@@ -73,14 +82,13 @@ module Tenant
             # Generate routes
             generate_routes
             
-            # Generate utility files
-            generate_utils
-            generate_error_classes
-            
             # Generate API features
             generate_api_features
             
-            log_info("Express.js application generation completed successfully")
+            # Generate BullMQ setup if batch jobs are defined
+            generate_bullmq_setup if @batch_jobs && @batch_jobs.any?
+            
+            log_info("Express.js application generated successfully at #{@express_path}")
           end
         end
         
@@ -939,6 +947,11 @@ module Tenant
         def generate_api_features
           # Implement API features generation logic here
           log_info("API features generation not implemented for Express.js")
+        end
+        
+        def generate_bullmq_setup
+          # Implement BullMQ setup generation logic here
+          log_info("BullMQ setup generation not implemented for Express.js")
         end
         
         def with_error_handling
