@@ -1,9 +1,9 @@
 source 'https://rubygems.org'
 
 # Core gems
-gem 'rails', '~> 7.0'
+gem 'rails', '~> 8.0'
 gem 'thor', '~> 1.2'
-gem 'activesupport', '~> 7.0'
+gem 'activesupport', '~> 8.0'
 gem 'zeitwerk', '~> 2.6'
 
 # Development and testing
