@@ -1,6 +1,6 @@
 # Multi-Cloud Deployment with CDK and CDKTF
 
-This directory contains the infrastructure as code (IaC) setup for deploying the Dwelling application to multiple cloud providers (AWS, Azure, GCP) using either the Cloud Development Kit for Terraform (CDKTF) or AWS Cloud Development Kit (CDK).
+This directory contains the infrastructure as code (IaC) setup for deploying the HeadStart application to multiple cloud providers (AWS, Azure, GCP) using either the Cloud Development Kit for Terraform (CDKTF) or AWS Cloud Development Kit (CDK).
 
 ## Prerequisites
 

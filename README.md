@@ -1,4 +1,4 @@
-# Dwelling Model Builder
+# HeadStart Model Builder
 
 This tool allows you to generate Ruby on Rails, Express.js, or Python applications from YAML model definitions.
 

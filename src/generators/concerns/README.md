@@ -1,6 +1,6 @@
 # Generator Concerns
 
-This directory contains the concerns (modules) used by various generators in the Dwelling application. Each concern is responsible for a specific aspect of the generation process.
+This directory contains the concerns (modules) used by various generators in the HeadStart application. Each concern is responsible for a specific aspect of the generation process.
 
 ## Structure
 

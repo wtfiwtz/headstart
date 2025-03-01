@@ -1,6 +1,6 @@
-# Dwelling Model Builder - Development Summary
+# HeadStart Model Builder - Development Summary
 
-This document summarizes the development work completed on the Dwelling Model Builder, a powerful tool for generating Ruby on Rails, Express.js, and Python applications from YAML model definitions.
+This document summarizes the development work completed on the HeadStart Model Builder, a powerful tool for generating Ruby on Rails, Express.js, and Python applications from YAML model definitions.
 
 ## Completed Components
 
