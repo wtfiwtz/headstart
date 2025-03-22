@@ -1,0 +1,126 @@
+module Generated
+  class <%= model.name.pluralize %>Controller < ApplicationController
+    before_action :set_<%= model.name.underscore %>, only: [:show, :edit, :update, :destroy]
+    respond_to :html, :json
+
+    # GET /generated/<%= model.name.underscore.pluralize %>
+    # GET /generated/<%= model.name.underscore.pluralize %>.json
+    def index
+      @pagy, @<%= model.name.underscore.pluralize %> = pagy(filtered_and_sorted_<%= model.name.underscore.pluralize %>, items: params[:per_page] || 20)
+      
+      respond_to do |format|
+        format.html
+        format.json do
+          render json: {
+            <%= model.name.underscore.pluralize %>: @<%= model.name.underscore.pluralize %>,
+            pagination: {
+              current_page: @pagy.page,
+              total_pages: @pagy.pages,
+              total_count: @pagy.count,
+              per_page: @pagy.items
+            }
+          }
+        end
+      end
+    end
+
+    # GET /generated/<%= model.name.underscore.pluralize %>/1
+    # GET /generated/<%= model.name.underscore.pluralize %>/1.json
+    def show
+      respond_to do |format|
+        format.html
+        format.json { render json: @<%= model.name.underscore %> }
+      end
+    end
+
+    private
+      # Use callbacks to share common setup or constraints between actions.
+      def set_<%= model.name.underscore %>
+        @<%= model.name.underscore %> = <%= model.name %>.find(params[:id])
+      end
+      
+      # Filtering, sorting and pagination
+      def filtered_and_sorted_<%= model.name.underscore.pluralize %>
+        scope = <%= model.name %>.all
+        
+        # Apply filtering
+        scope = apply_filters(scope)
+        
+        # Apply sorting
+        scope = apply_sorting(scope)
+        
+        # Apply includes for eager loading
+        scope = apply_includes(scope)
+        
+        scope
+      end
+      
+      def apply_filters(scope)
+        # Apply search filter if provided
+        if params[:q].present?
+          search_columns = [<%= model.attributes.select { |attr| ['string', 'text'].include?(attr.type.to_s) }.map { |attr| "'#{attr.name}'" }.join(', ') %>]
+          search_term = "%#{params[:q]}%"
+          
+          search_conditions = search_columns.map { |column| "#{column} ILIKE :search" }.join(' OR ')
+          scope = scope.where(search_conditions, search: search_term)
+        end
+        
+        # Apply column-specific filters
+        <%= model.attributes.map do |attr|
+          if ['string', 'text'].include?(attr.type.to_s)
+            "scope = scope.where(#{attr.name}: params[:#{attr.name}]) if params[:#{attr.name}].present?"
+          elsif ['integer', 'float', 'decimal'].include?(attr.type.to_s)
+            "if params[:#{attr.name}_min].present?
+          scope = scope.where('#{attr.name} >= ?', params[:#{attr.name}_min])
+        end
+        if params[:#{attr.name}_max].present?
+          scope = scope.where('#{attr.name} <= ?', params[:#{attr.name}_max])
+        end"
+          elsif ['date', 'datetime', 'time'].include?(attr.type.to_s)
+            "if params[:#{attr.name}_from].present?
+          scope = scope.where('#{attr.name} >= ?', params[:#{attr.name}_from])
+        end
+        if params[:#{attr.name}_to].present?
+          scope = scope.where('#{attr.name} <= ?', params[:#{attr.name}_to])
+        end"
+          elsif attr.type.to_s == 'boolean'
+            "if params[:#{attr.name}].present?
+          scope = scope.where(#{attr.name}: params[:#{attr.name}] == 'true')
+        end"
+          end
+        end.compact.join("\n        ") %>
+        
+        scope
+      end
+      
+      def apply_sorting(scope)
+        sort_column = params[:sort] || 'created_at'
+        sort_direction = %w[asc desc].include?(params[:direction]) ? params[:direction] : 'desc'
+        
+        # Ensure the sort column is valid
+        valid_columns = <%= model.attributes.map { |attr| "'#{attr.name}'" }.join(', ') %>, 'created_at', 'updated_at'
+        
+        if valid_columns.include?(sort_column)
+          scope = scope.order("#{sort_column} #{sort_direction}")
+        else
+          scope = scope.order(created_at: :desc)
+        end
+        
+        scope
+      end
+      
+      def apply_includes(scope)
+        # Add eager loading for associations to avoid N+1 queries
+        associations = []
+        
+        <% model.associations.each do |assoc| %>
+        <% if ['belongs_to', 'has_one'].include?(assoc.kind) %>
+        associations << :<%= assoc.name %>
+        <% end %>
+        <% end %>
+        
+        scope = scope.includes(associations) if associations.any?
+        scope
+      end
+  end
+end 

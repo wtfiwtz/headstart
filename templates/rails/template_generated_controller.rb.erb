@@ -1,0 +1,171 @@
+module Generated
+  class <%= model.name.pluralize %>Controller < ApplicationController
+    before_action :set_<%= model.name.underscore %>, only: [:show, :edit, :update, :destroy]
+    respond_to :html, :json, :xml
+
+    # GET /<%= model.name.pluralize %>
+    # GET /<%= model.name.pluralize %>.json
+    def index
+      @q = <%= model.name %>.ransack(params[:q])
+      @q.sorts = 'created_at desc' if @q.sorts.empty?
+      
+      # Apply eager loading to avoid N+1 queries
+      @q.result = @q.result.includes(eager_load_associations)
+      
+      @pagy, @<%= model.name.pluralize %> = pagy(@q.result, items: params[:per_page] || 20)
+      
+      respond_to do |format|
+        format.html
+        format.json do
+          render json: {
+            <%= model.name.pluralize %>: @<%= model.name.pluralize %>,
+            pagination: {
+              current_page: @pagy.page,
+              total_pages: @pagy.pages,
+              total_count: @pagy.count,
+              per_page: @pagy.items
+            },
+            meta: {
+              filters: ransack_filters,
+              sortable_fields: sortable_fields
+            }
+          }
+        end
+        format.xml { render xml: @<%= model.name.pluralize %> }
+        format.csv { send_data <%= model.name.pluralize %>_to_csv, filename: "<%= model.name.pluralize %>-#{Date.today}.csv" }
+      end
+    end
+
+    # GET /<%= model.name.pluralize %>/1
+    # GET /<%= model.name.pluralize %>/1.json
+    def show
+      respond_to do |format|
+        format.html
+        format.json { render json: @<%= model.name.underscore %> }
+        format.xml { render xml: @<%= model.name.underscore %> }
+      end
+    end
+
+    # GET /<%= model.name.pluralize %>/new
+    def new
+      @<%= model.name.underscore %> = <%= model.name %>.new
+    end
+
+    # GET /<%= model.name.pluralize %>/1/edit
+    def edit
+    end
+
+    # POST /<%= model.name.pluralize %>
+    # POST /<%= model.name.pluralize %>.json
+    def create
+      @<%= model.name.underscore %> = <%= model.name %>.new(<%= model.name.underscore %>_params)
+
+      respond_to do |format|
+        if @<%= model.name.underscore %>.save
+          format.html { redirect_to @<%= model.name.underscore %>, notice: '<%= model.name %> was successfully created.' }
+          format.json { render json: @<%= model.name.underscore %>, status: :created, location: @<%= model.name.underscore %> }
+          format.xml { render xml: @<%= model.name.underscore %>, status: :created, location: @<%= model.name.underscore %> }
+        else
+          format.html { render :new }
+          format.json { render json: { errors: @<%= model.name.underscore %>.errors }, status: :unprocessable_entity }
+          format.xml { render xml: @<%= model.name.underscore %>.errors, status: :unprocessable_entity }
+        end
+      end
+    end
+
+    # PATCH/PUT /<%= model.name.pluralize %>/1
+    # PATCH/PUT /<%= model.name.pluralize %>/1.json
+    def update
+      respond_to do |format|
+        if @<%= model.name.underscore %>.update(<%= model.name.underscore %>_params)
+          format.html { redirect_to @<%= model.name.underscore %>, notice: '<%= model.name %> was successfully updated.' }
+          format.json { render json: @<%= model.name.underscore %>, status: :ok }
+          format.xml { render xml: @<%= model.name.underscore %>, status: :ok }
+        else
+          format.html { render :edit }
+          format.json { render json: { errors: @<%= model.name.underscore %>.errors }, status: :unprocessable_entity }
+          format.xml { render xml: @<%= model.name.underscore %>.errors, status: :unprocessable_entity }
+        end
+      end
+    end
+
+    # DELETE /<%= model.name.pluralize %>/1
+    # DELETE /<%= model.name.pluralize %>/1.json
+    def destroy
+      @<%= model.name.underscore %>.destroy
+      respond_to do |format|
+        format.html { redirect_to <%= model.name.pluralize %>_url, notice: '<%= model.name %> was successfully destroyed.' }
+        format.json { head :no_content }
+        format.xml { head :no_content }
+      end
+    end
+
+    private
+      # Use callbacks to share common setup or constraints between actions.
+      def set_<%= model.name.underscore %>
+        @<%= model.name.underscore %> = <%= model.name %>.find(params[:id])
+      end
+
+      # Only allow a list of trusted parameters through.
+      def <%= model.name.underscore %>_params
+        params.require(:<%= model.name.underscore %>).permit(<% model.attributes.each_with_index do |attr, i| %><%= i > 0 ? ', ' : '' %>:<%= attr.name %><% end %>)
+      end
+      
+      # List of associations to eager load to avoid N+1 queries
+      def eager_load_associations
+        [
+          <% model.associations.each do |assoc| %>
+          <% if ['belongs_to', 'has_one'].include?(assoc.kind) %>
+          :<%= assoc.name %>,
+          <% end %>
+          <% end %>
+        ]
+      end
+      
+      # Generate CSV data for export
+      def <%= model.name.pluralize %>_to_csv
+        require 'csv'
+        
+        attributes = [<% model.attributes.each_with_index do |attr, i| %><%= i > 0 ? ', ' : '' %>:<%= attr.name %><% end %>]
+        
+        CSV.generate(headers: true) do |csv|
+          csv << attributes.map { |attr| attr.to_s.humanize }
+          
+          @<%= model.name.pluralize %>.each do |<%= model.name.underscore %>|
+            csv << attributes.map { |attr| <%= model.name.underscore %>.send(attr) }
+          end
+        end
+      end
+      
+      # Available filters for API documentation
+      def ransack_filters
+        {
+          <% model.attributes.each do |attr| %>
+          <%= attr.name %>: {
+            <% if ['string', 'text'].include?(attr.type.to_s) %>
+            predicates: ['eq', 'cont', 'start', 'end'],
+            <% elsif ['integer', 'float', 'decimal'].include?(attr.type.to_s) %>
+            predicates: ['eq', 'gt', 'lt', 'gteq', 'lteq'],
+            <% elsif ['date', 'datetime', 'time'].include?(attr.type.to_s) %>
+            predicates: ['eq', 'gt', 'lt', 'gteq', 'lteq'],
+            <% elsif attr.type.to_s == 'boolean' %>
+            predicates: ['eq'],
+            <% end %>
+            type: '<%= attr.type %>'
+          },
+          <% end %>
+        }
+      end
+      
+      # Available sort fields for API documentation
+      def sortable_fields
+        [
+          <% model.attributes.each do |attr| %>
+          '<%= attr.name %>',
+          <% end %>
+          'created_at',
+          'updated_at'
+        ]
+      end
+  end
+end
