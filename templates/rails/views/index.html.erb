@@ -1,14 +1,14 @@
 <p style="color: green"><%%= notice %></p>
 
-<h1><%= c_plural %></h1>
+<h1><%= model.name.pluralize %></h1>
 
-<div id="<%= plural %>">
-  <%% @<%= plural %>.each do |<%= singular %>| %>
-    <%%= render <%= singular %> %>
+<div id="<%= model.name.pluralize %>">
+  <%% @<%= model.name.pluralize %>.each do |<%= model.name.underscore %>| %>
+    <%%= render <%= model.name.underscore %> %>
     <p>
-      <%%= link_to "Show this <%= singular %>", <%= singular %> %>
+      <%%= link_to "Show this <%= model.name.underscore %>", <%= model.name.underscore %> %>
     </p>
   <%% end %>
 </div>
 
-<%%= link_to "New <%= singular %>", new_<%= singular %>_path %>
+<%%= link_to "New <%= model.name.underscore %>", new_<%= model.name.underscore %>_path %>

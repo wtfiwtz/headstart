@@ -14,13 +14,13 @@ require 'ostruct'
 
 # Setup commands
 require_relative './concerns/rails/setup_commands/base_command'
-require_relative './concerns/rails/setup_commands/install_gems_command'
-require_relative './concerns/rails/setup_commands/controller_inheritance_command'
-require_relative './concerns/rails/setup_commands/css_framework_command'
-require_relative './concerns/rails/setup_commands/form_builder_command'
-require_relative './concerns/rails/setup_commands/features_command'
-require_relative './concerns/rails/setup_commands/monitoring_command'
-require_relative './concerns/rails/setup_commands/vector_database_command'
+# require_relative './concerns/rails/setup_commands/install_gems_command'
+# require_relative './concerns/rails/setup_commands/controller_inheritance_command'
+# require_relative './concerns/rails/setup_commands/css_framework_command'
+# require_relative './concerns/rails/setup_commands/form_builder_command'
+# require_relative './concerns/rails/setup_commands/features_command'
+# require_relative './concerns/rails/setup_commands/monitoring_command'
+# require_relative './concerns/rails/setup_commands/vector_database_command'
 require_relative './concerns/rails/setup_commands/template_engine_command'
 
 module Tenant
@@ -80,7 +80,7 @@ module Tenant
           
           log_info("Generating controller: #{m.name}")
           PluginSystem.run_hooks(:before_controller_generate, m)
-          generate_controller(m)
+          generate_controller(m.name, m.attributes, m.associations)
           PluginSystem.run_hooks(:after_controller_generate, m)
           
           log_info("Generating views: #{m.name}")
@@ -327,32 +327,45 @@ module Tenant
       f.write("\n") if needs_callbacks
     end
 
-    def generate_controller(m)
-      name, hsh = build_name_and_hash(m)
+    def generate_controller(model_name, attributes, associations = [])
+      controller_path = File.join(@rails_all_path, 'app', 'controllers', "#{model_name.underscore.pluralize}_controller.rb")
+      template_path = File.join(@templates_path, 'template_controller.rb.erb')
       
-      if @configuration&.controller_inheritance
-        # Generate base controller in the generated folder
-        generate_base_controller(name, hsh)
-        
-        # Generate derived controller in the main controllers folder
-        generate_derived_controller(name, hsh)
-      else
-        # Original implementation
-      base_path, src, target, target_name = controller_paths(:controller, name)
-        write_template(:controller, base_path, src, target, target_name, hsh)
-      end
+      # Create a model object that matches the template's expectations
+      model = OpenStruct.new(
+        name: model_name,
+        attributes: attributes.map { |name, type| OpenStruct.new(name: name, type: type) },
+        associations: associations.map { |assoc| OpenStruct.new(assoc) }
+      )
+      
+      locals = {
+        model: model,
+        configuration: @configuration
+      }
+      
+      write_template(template_path, controller_path, locals)
+      
+      # Generate base controller if needed
+      generate_base_controller(model_name, attributes, associations) if @configuration&.controller_inheritance
     end
 
-    def generate_base_controller(name, hsh)
-      base_path = "#{@rails_all_path}/app/controllers/generated"
-      FileUtils.mkdir_p base_path
+    def generate_base_controller(model_name, attributes, associations = [])
+      controller_path = File.join(@rails_all_path, 'app', 'controllers', 'generated', "#{model_name.underscore.pluralize}_controller.rb")
+      template_path = File.join(@templates_path, 'template_generated_controller.rb.erb')
       
-      # Use the template for generated controllers
-      src = "#{@templates_path}/template_generated_controller.rb.erb"
-      target = "#{base_path}/#{name.pluralize}_controller.rb"
-      target_name = "generated/#{name.pluralize}_controller.rb"
+      # Create a model object that matches the template's expectations
+      model = OpenStruct.new(
+        name: model_name,
+        attributes: attributes.map { |name, type| OpenStruct.new(name: name, type: type) },
+        associations: associations.map { |assoc| OpenStruct.new(assoc) }
+      )
       
-      write_template(:controller, base_path, src, target, target_name, hsh)
+      locals = {
+        model: model,
+        configuration: @configuration
+      }
+      
+      write_template(template_path, controller_path, locals)
     end
 
     def generate_derived_controller(name, hsh)
@@ -375,81 +388,81 @@ module Tenant
       # Create the template file in the templates/rails directory
       template_content = <<~TEMPLATE
 module Generated
-  class <%= c_plural %>Controller < ApplicationController
-    before_action :set_<%= singular %>, only: [:show, :edit, :update, :destroy]
+  class <%= model.name.pluralize %>Controller < ApplicationController
+    before_action :set_<%= model.name.underscore %>, only: [:show, :edit, :update, :destroy]
 
-    # GET /<%= plural %>
+    # GET /<%= model.name.pluralize %>
     def index
-      @<%= plural %> = <%= c_singular %>.all
+      @<%= model.name.pluralize %> = <%= model.name.underscore.pluralize %>.all
       
       respond_to do |format|
         format.html
-        format.json { render json: @<%= plural %> }
+        format.json { render json: @<%= model.name.pluralize %> }
       end
     end
 
-    # GET /<%= plural %>/1
+    # GET /<%= model.name.pluralize %>/1
     def show
       respond_to do |format|
         format.html
-        format.json { render json: @<%= singular %> }
+        format.json { render json: @<%= model.name.underscore %> }
       end
     end
 
-    # GET /<%= plural %>/new
+    # GET /<%= model.name.pluralize %>/new
     def new
-      @<%= singular %> = <%= c_singular %>.new
+      @<%= model.name.underscore %> = <%= c_singular %>.new
     end
 
-    # GET /<%= plural %>/1/edit
+    # GET /<%= model.name.pluralize %>/1/edit
     def edit
     end
 
-    # POST /<%= plural %>
+    # POST /<%= model.name.pluralize %>
     def create
-      @<%= singular %> = <%= c_singular %>.new(<%= singular %>_params)
+      @<%= model.name.underscore %> = <%= c_singular %>.new(<%= model.name.underscore %>_params)
 
       respond_to do |format|
-        if @<%= singular %>.save
-          format.html { redirect_to @<%= singular %>, notice: '<%= c_singular %> was successfully created.' }
-          format.json { render json: @<%= singular %>, status: :created, location: @<%= singular %> }
+        if @<%= model.name.underscore %>.save
+          format.html { redirect_to @<%= model.name.underscore %>, notice: '<%= c_singular %> was successfully created.' }
+          format.json { render json: @<%= model.name.underscore %>, status: :created, location: @<%= model.name.underscore %> }
         else
           format.html { render :new }
-          format.json { render json: @<%= singular %>.errors, status: :unprocessable_entity }
+          format.json { render json: @<%= model.name.underscore %>.errors, status: :unprocessable_entity }
         end
       end
     end
 
-    # PATCH/PUT /<%= plural %>/1
+    # PATCH/PUT /<%= model.name.pluralize %>/1
     def update
       respond_to do |format|
-        if @<%= singular %>.update(<%= singular %>_params)
-          format.html { redirect_to @<%= singular %>, notice: '<%= c_singular %> was successfully updated.' }
-          format.json { render json: @<%= singular %>, status: :ok, location: @<%= singular %> }
+        if @<%= model.name.underscore %>.update(<%= model.name.underscore %>_params)
+          format.html { redirect_to @<%= model.name.underscore %>, notice: '<%= c_singular %> was successfully updated.' }
+          format.json { render json: @<%= model.name.underscore %>, status: :ok, location: @<%= model.name.underscore %> }
         else
           format.html { render :edit }
-          format.json { render json: @<%= singular %>.errors, status: :unprocessable_entity }
+          format.json { render json: @<%= model.name.underscore %>.errors, status: :unprocessable_entity }
         end
       end
 
-    # DELETE /<%= plural %>/1
+    # DELETE /<%= model.name.pluralize %>/1
     def destroy
-      @<%= singular %>.destroy
+      @<%= model.name.underscore %>.destroy
       respond_to do |format|
-        format.html { redirect_to <%= plural %>_url, notice: '<%= c_singular %> was successfully destroyed.' }
+        format.html { redirect_to <%= model.name.pluralize %>_url, notice: '<%= c_singular %> was successfully destroyed.' }
         format.json { head :no_content }
       end
     end
 
     private
       # Use callbacks to share common setup or constraints between actions.
-      def set_<%= singular %>
-        @<%= singular %> = <%= c_singular %>.find(params[:id])
+      def set_<%= model.name.underscore %>
+        @<%= model.name.underscore %> = <%= c_singular %>.find(params[:id])
       end
 
       # Only allow a list of trusted parameters through.
-      def <%= singular %>_params
-        params.require(:<%= singular %>).permit(<% attributes.each_with_index do |attr, i| %><%= i > 0 ? ', ' : '' %>:<%= attr %><% end %>)
+      def <%= model.name.underscore %>_params
+        params.require(:<%= model.name.underscore %>).permit(<% attributes.each_with_index do |attr, i| %><%= i > 0 ? ', ' : '' %>:<%= attr %><% end %>)
       end
   end
 end
@@ -465,7 +478,7 @@ TEMPLATE
       
       # Create the template file in the templates/rails directory
       template_content = <<~TEMPLATE
-class <%= c_plural %>Controller < Generated::<%= c_plural %>Controller
+class <%= model.name.pluralize %>Controller < Generated::<%= model.name.pluralize %>Controller
   # Add your custom controller logic here
   # This file won't be overwritten when you regenerate
 end
@@ -488,6 +501,10 @@ TEMPLATE
       derived_controller_template = "#{@templates_path}/template_derived_controller.rb.erb"
       create_derived_controller_template unless File.exist?(derived_controller_template)
       
+      # Create the controller template if it doesn't exist
+      controller_template = "#{@templates_path}/template_controller.rb.erb"
+      create_controller_template unless File.exist?(controller_template)
+      
       # Create form templates directory
       form_templates_dir = "#{@templates_path}/views"
       FileUtils.mkdir_p form_templates_dir
@@ -500,10 +517,40 @@ TEMPLATE
     end
 
     def generate_view(m)
-      name, hsh = build_name_and_hash(m)
-      (0..8).each do |view_file|
-        base_path, src, target, target_name = view_paths(:view, name, view_file)
-        write_template(:view, base_path, src, target, target_name, hsh)
+      name = m.name.to_s.gsub(/[^A-Za-z0-9]/, '').downcase
+      
+      # Create locals hash with all necessary variables
+      locals = {
+        model: m,
+        attributes: m.attributes.map { |name, type| OpenStruct.new(name: name, type: type) },
+        singular: name,
+        plural: name.pluralize,
+        c_singular: name.capitalize,
+        c_plural: name.pluralize.capitalize,
+        configuration: @configuration
+      }
+      
+      # Create views directory
+      views_dir = File.join(@rails_all_path, 'app', 'views', name.pluralize)
+      FileUtils.mkdir_p(views_dir)
+      
+      # Define view templates to generate
+      view_templates = {
+        '_form.html.erb' => '_form.html.erb',
+        'edit.html.erb' => 'edit.html.erb',
+        'index.html.erb' => 'index.html.erb',
+        'new.html.erb' => 'new.html.erb',
+        'show.html.erb' => 'show.html.erb',
+        'index.json.jbuilder' => 'index.json.jbuilder',
+        'show.json.jbuilder' => 'show.json.jbuilder'
+      }
+      
+      # Generate each view
+      view_templates.each do |template_name, output_name|
+        template_path = File.join(@templates_path, 'views', template_name)
+        output_path = File.join(views_dir, output_name)
+        
+        write_template(template_path, output_path, locals)
       end
     end
 
@@ -542,15 +589,25 @@ TEMPLATE
       [base_path, src, target, targets[view_file]]
     end
 
-    def write_template(kind, base_path, src, target, target_name, hsh)
-      FileUtils.mkdir_p base_path
-      FileUtils.mkdir_p "#{base_path}/#{hsh[:plural]}" if kind == :view
-      erb = ERB.new(File.read(src))
-      erb.filename = src
-      out = erb.result_with_hash(hsh)
-      file = File.open(target, 'w')
-      File.write(file, out)
-      puts "Generated #{target_name}"
+    def write_template(template_path, output_path, locals = {})
+      template = File.read(template_path)
+      
+      # Create a new binding for the template
+      template_binding = binding
+      
+      # Add locals to the binding
+      locals.each do |key, value|
+        template_binding.local_variable_set(key, value)
+      end
+      
+      # Render the template with the locals
+      result = ERB.new(template, trim_mode: '-').result(template_binding)
+      
+      # Ensure the output directory exists
+      FileUtils.mkdir_p(File.dirname(output_path))
+      
+      # Write the result to the output file
+      File.write(output_path, result)
     end
 
     def generate_controller_basic(m)
@@ -647,13 +704,13 @@ TEMPLATE
 
     def create_default_form_template(dir)
       template_content = <<~TEMPLATE
-<%%= form_with(model: @<%= singular %>, local: true) do |form| %>
-  <%% if @<%= singular %>.errors.any? %>
+<%%= form_with(model: @<%= model.name.underscore %>, local: true) do |form| %>
+  <%% if @<%= model.name.underscore %>.errors.any? %>
     <div id="error_explanation">
-      <h2><%%= pluralize(@<%= singular %>.errors.count, "error") %> prohibited this <%= singular %> from being saved:</h2>
+      <h2><%%= pluralize(@<%= model.name.underscore %>.errors.count, "error") %> prohibited this <%= model.name.underscore %> from being saved:</h2>
 
       <ul>
-        <%% @<%= singular %>.errors.full_messages.each do |message| %>
+        <%% @<%= model.name.underscore %>.errors.full_messages.each do |message| %>
           <li><%%= message %></li>
         <%% end %>
       </ul>
@@ -679,7 +736,7 @@ TEMPLATE
     
     def create_simple_form_template(dir)
       template_content = <<~TEMPLATE
-<%%= simple_form_for(@<%= singular %>) do |f| %>
+<%%= simple_form_for(@<%= model.name.underscore %>) do |f| %>
   <%%= f.error_notification %>
   <%%= f.error_notification message: f.object.errors[:base].to_sentence if f.object.errors[:base].present? %>
 
@@ -701,7 +758,7 @@ TEMPLATE
     
     def create_formtastic_template(dir)
       template_content = <<~TEMPLATE
-<%%= semantic_form_for @<%= singular %> do |f| %>
+<%%= semantic_form_for @<%= model.name.underscore %> do |f| %>
   <%%= f.inputs do %>
 <% attributes.each do |attribute| %>
     <%%= f.input :<%= attribute %> %>
@@ -898,8 +955,9 @@ TEMPLATE
         collection_routes << "get :export"
       end
       
-      # Add import route if it makes sense for this model
-      if model.name.to_s.in?(%w[product user customer account])
+      # Add import route for specific model types
+      importable_modules = %w[product user customer account]
+      if importable_modules.include?(model.name.to_s.downcase)
         collection_routes << "post :import"
       end
       

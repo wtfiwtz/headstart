@@ -1,1 +1,1 @@
-json.partial! "<%= plural %>/<%= singular %>", <%= singular %>: @<%= singular %>
+json.partial! "<%= model.name.pluralize %>/<%= singular %>", <%= singular %>: @<%= singular %>

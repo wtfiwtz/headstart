@@ -221,6 +221,7 @@ module Tenant
           @configuration.add_gem('meilisearch-rails', '~> 0.8')
         end
       end
+    end
       
     def setup_search_engine
       FileUtils.chdir @rails_all_path do
@@ -1478,7 +1479,7 @@ module Tenant
     
     def load_configuration_from_yaml(yaml_path)
       require 'yaml'
-      require_relative '../../configuration/application_configuration'
+      require_relative '../../../configuration/application_configuration'
       
       log_info("Loading configuration from YAML file: #{yaml_path}")
       
@@ -1509,7 +1510,7 @@ module Tenant
       config.frontend = yaml_content['frontend']&.to_sym if yaml_content['frontend']
       config.css_framework = yaml_content['css_framework']&.to_sym if yaml_content['css_framework']
       config.form_builder = yaml_content['form_builder']&.to_sym if yaml_content['form_builder']
-      config.template_engine = yaml_content['template_engine']&.to_sym if yaml_content['template_engine']
+      # config.template_engine = yaml_content['template_engine']&.to_sym if yaml_content['template_engine']
       config.rails_path = yaml_content['rails_path'] if yaml_content['rails_path']
     end
     

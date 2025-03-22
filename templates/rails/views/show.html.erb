@@ -4,7 +4,7 @@
 
 <div>
   <%%= link_to "Edit this <%= singular %>", edit_<%= singular %>_path(@<%= singular %>) %> |
-  <%%= link_to "Back to <%= plural %>", <%= plural %>_path %>
+  <%%= link_to "Back to <%= model.name.pluralize %>", <%= model.name.pluralize %>_path %>
 
   <%%= button_to "Destroy this <%= singular %>", @<%= singular %>, method: :delete %>
 </div>

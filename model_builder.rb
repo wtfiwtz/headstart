@@ -9,7 +9,7 @@ require_relative './src/generators/ruby'
 ModelStruct = Struct.new(:name, :attributes, :associations)
 
 module Tenant
-  class Configuration
+  class Config
     attr_accessor :frontend, :gems, :features, :css_framework, :controller_inheritance, :form_builder, :monitoring, :template_engine
     
     def initialize
@@ -27,7 +27,7 @@ module Tenant
   class Builder
     class << self
       def configuration
-        @configuration ||= Configuration.new
+        @configuration ||= Config.new
       end
       
       def configure

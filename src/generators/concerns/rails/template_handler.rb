@@ -38,82 +38,82 @@ module Tenant
       # Create the template file in the templates/rails directory
       template_content = <<~TEMPLATE
 module Generated
-  class <%= c_plural %>Controller < ApplicationController
-    before_action :set_<%= singular %>, only: [:show, :edit, :update, :destroy]
+  class <%= model.name.pluralize %>Controller < ApplicationController
+    before_action :set_<%= model.name.underscore %>, only: [:show, :edit, :update, :destroy]
 
-    # GET /<%= plural %>
+    # GET /<%= model.name.pluralize %>
     def index
-      @<%= plural %> = <%= c_singular %>.all
+      @<%= model.name.pluralize %> = <%= c_singular %>.all
       
       respond_to do |format|
         format.html
-        format.json { render json: @<%= plural %> }
+        format.json { render json: @<%= model.name.pluralize %> }
       end
     end
 
-    # GET /<%= plural %>/1
+    # GET /<%= model.name.pluralize %>/1
     def show
       respond_to do |format|
         format.html
-        format.json { render json: @<%= singular %> }
+        format.json { render json: @<%= model.name.underscore %> }
       end
     end
 
-    # GET /<%= plural %>/new
+    # GET /<%= model.name.pluralize %>/new
     def new
-      @<%= singular %> = <%= c_singular %>.new
+      @<%= model.name.underscore %> = <%= c_singular %>.new
     end
 
-    # GET /<%= plural %>/1/edit
+    # GET /<%= model.name.pluralize %>/1/edit
     def edit
     end
 
-    # POST /<%= plural %>
+    # POST /<%= model.name.pluralize %>
     def create
-      @<%= singular %> = <%= c_singular %>.new(<%= singular %>_params)
+      @<%= model.name.underscore %> = <%= c_singular %>.new(<%= model.name.underscore %>_params)
 
       respond_to do |format|
-        if @<%= singular %>.save
-          format.html { redirect_to @<%= singular %>, notice: '<%= c_singular %> was successfully created.' }
-          format.json { render json: @<%= singular %>, status: :created, location: @<%= singular %> }
+        if @<%= model.name.underscore %>.save
+          format.html { redirect_to @<%= model.name.underscore %>, notice: '<%= c_singular %> was successfully created.' }
+          format.json { render json: @<%= model.name.underscore %>, status: :created, location: @<%= model.name.underscore %> }
         else
           format.html { render :new }
-          format.json { render json: @<%= singular %>.errors, status: :unprocessable_entity }
+          format.json { render json: @<%= model.name.underscore %>.errors, status: :unprocessable_entity }
         end
       end
     end
 
-    # PATCH/PUT /<%= plural %>/1
+    # PATCH/PUT /<%= model.name.pluralize %>/1
     def update
       respond_to do |format|
-        if @<%= singular %>.update(<%= singular %>_params)
-          format.html { redirect_to @<%= singular %>, notice: '<%= c_singular %> was successfully updated.' }
-          format.json { render json: @<%= singular %>, status: :ok, location: @<%= singular %> }
+        if @<%= model.name.underscore %>.update(<%= model.name.underscore %>_params)
+          format.html { redirect_to @<%= model.name.underscore %>, notice: '<%= c_singular %> was successfully updated.' }
+          format.json { render json: @<%= model.name.underscore %>, status: :ok, location: @<%= model.name.underscore %> }
         else
           format.html { render :edit }
-          format.json { render json: @<%= singular %>.errors, status: :unprocessable_entity }
+          format.json { render json: @<%= model.name.underscore %>.errors, status: :unprocessable_entity }
         end
       end
     end
 
-    # DELETE /<%= plural %>/1
+    # DELETE /<%= model.name.pluralize %>/1
     def destroy
-      @<%= singular %>.destroy
+      @<%= model.name.underscore %>.destroy
       respond_to do |format|
-        format.html { redirect_to <%= plural %>_url, notice: '<%= c_singular %> was successfully destroyed.' }
+        format.html { redirect_to <%= model.name.pluralize %>_url, notice: '<%= c_singular %> was successfully destroyed.' }
         format.json { head :no_content }
       end
     end
 
     private
       # Use callbacks to share common setup or constraints between actions.
-      def set_<%= singular %>
-        @<%= singular %> = <%= c_singular %>.find(params[:id])
+      def set_<%= model.name.underscore %>
+        @<%= model.name.underscore %> = <%= c_singular %>.find(params[:id])
       end
 
       # Only allow a list of trusted parameters through.
-      def <%= singular %>_params
-        params.require(:<%= singular %>).permit(<% attributes.each_with_index do |attr, i| %><%= i > 0 ? ', ' : '' %>:<%= attr %><% end %>)
+      def <%= model.name.underscore %>_params
+        params.require(:<%= model.name.underscore %>).permit(<% attributes.each_with_index do |attr, i| %><%= i > 0 ? ', ' : '' %>:<%= attr %><% end %>)
       end
   end
 end
@@ -129,7 +129,7 @@ TEMPLATE
       
       # Create the template file in the templates/rails directory
       template_content = <<~TEMPLATE
-class <%= c_plural %>Controller < Generated::<%= c_plural %>Controller
+class <%= model.name.pluralize %>Controller < Generated::<%= model.name.pluralize %>Controller
   # Add your custom controller logic here
   # This file won't be overwritten when you regenerate
 end
@@ -193,13 +193,13 @@ TEMPLATE
     
     def create_default_form_template(dir)
       template_content = <<~TEMPLATE
-<%%= form_with(model: @<%= singular %>, local: true) do |form| %>
-  <%% if @<%= singular %>.errors.any? %>
+<%%= form_with(model: @<%= model.name.underscore %>, local: true) do |form| %>
+  <%% if @<%= model.name.underscore %>.errors.any? %>
     <div id="error_explanation">
-      <h2><%%= pluralize(@<%= singular %>.errors.count, "error") %> prohibited this <%= singular %> from being saved:</h2>
+      <h2><%%= pluralize(@<%= model.name.underscore %>.errors.count, "error") %> prohibited this <%= model.name.underscore %> from being saved:</h2>
 
       <ul>
-        <%% @<%= singular %>.errors.full_messages.each do |message| %>
+        <%% @<%= model.name.underscore %>.errors.full_messages.each do |message| %>
           <li><%%= message %></li>
         <%% end %>
       </ul>
@@ -225,7 +225,7 @@ TEMPLATE
     
     def create_simple_form_template(dir)
       template_content = <<~TEMPLATE
-<%%= simple_form_for(@<%= singular %>) do |f| %>
+<%%= simple_form_for(@<%= model.name.underscore %>) do |f| %>
   <%%= f.error_notification %>
   <%%= f.error_notification message: f.object.errors[:base].to_sentence if f.object.errors[:base].present? %>
 
@@ -247,7 +247,7 @@ TEMPLATE
     
     def create_formtastic_template(dir)
       template_content = <<~TEMPLATE
-<%%= semantic_form_for @<%= singular %> do |f| %>
+<%%= semantic_form_for @<%= model.name.underscore %> do |f| %>
   <%%= f.inputs do %>
 <% attributes.each do |attribute| %>
     <%%= f.input :<%= attribute %> %>
@@ -267,12 +267,12 @@ TEMPLATE
     
     def create_default_slim_form_template(dir)
       template_content = <<~TEMPLATE
-= form_with(model: @<%= singular %>, local: true) do |form|
-  - if @<%= singular %>.errors.any?
+= form_with(model: @<%= model.name.underscore %>, local: true) do |form|
+  - if @<%= model.name.underscore %>.errors.any?
     #error_explanation
-      h2 = pluralize(@<%= singular %>.errors.count, "error") + " prohibited this <%= singular %> from being saved:"
+      h2 = pluralize(@<%= model.name.underscore %>.errors.count, "error") + " prohibited this <%= model.name.underscore %> from being saved:"
       ul
-        - @<%= singular %>.errors.full_messages.each do |message|
+        - @<%= model.name.underscore %>.errors.full_messages.each do |message|
           li = message
 
 <% attributes.each do |attribute| %>
@@ -291,7 +291,7 @@ TEMPLATE
     
     def create_simple_form_slim_template(dir)
       template_content = <<~TEMPLATE
-= simple_form_for(@<%= singular %>) do |f|
+= simple_form_for(@<%= model.name.underscore %>) do |f|
   = f.error_notification
   = f.error_notification message: f.object.errors[:base].to_sentence if f.object.errors[:base].present?
 
@@ -310,7 +310,7 @@ TEMPLATE
     
     def create_formtastic_slim_template(dir)
       template_content = <<~TEMPLATE
-= semantic_form_for @<%= singular %> do |f|
+= semantic_form_for @<%= model.name.underscore %> do |f|
   = f.inputs do
 <% attributes.each do |attribute| %>
     = f.input :<%= attribute %>
@@ -327,12 +327,12 @@ TEMPLATE
     
     def create_default_haml_form_template(dir)
       template_content = <<~TEMPLATE
-= form_with(model: @<%= singular %>, local: true) do |form|
-  - if @<%= singular %>.errors.any?
+= form_with(model: @<%= model.name.underscore %>, local: true) do |form|
+  - if @<%= model.name.underscore %>.errors.any?
     #error_explanation
-      %h2= pluralize(@<%= singular %>.errors.count, "error") + " prohibited this <%= singular %> from being saved:"
+      %h2= pluralize(@<%= model.name.underscore %>.errors.count, "error") + " prohibited this <%= model.name.underscore %> from being saved:"
       %ul
-        - @<%= singular %>.errors.full_messages.each do |message|
+        - @<%= model.name.underscore %>.errors.full_messages.each do |message|
           %li= message
 
 <% attributes.each do |attribute| %>
@@ -351,7 +351,7 @@ TEMPLATE
     
     def create_simple_form_haml_template(dir)
       template_content = <<~TEMPLATE
-= simple_form_for(@<%= singular %>) do |f|
+= simple_form_for(@<%= model.name.underscore %>) do |f|
   = f.error_notification
   = f.error_notification message: f.object.errors[:base].to_sentence if f.object.errors[:base].present?
 
@@ -370,7 +370,7 @@ TEMPLATE
     
     def create_formtastic_haml_template(dir)
       template_content = <<~TEMPLATE
-= semantic_form_for @<%= singular %> do |f|
+= semantic_form_for @<%= model.name.underscore %> do |f|
   = f.inputs do
 <% attributes.each do |attribute| %>
     = f.input :<%= attribute %>
