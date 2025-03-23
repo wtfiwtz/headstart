@@ -787,39 +787,54 @@ TEMPLATE
     def generate_routes
       routes_path = "#{@rails_all_path}/config/routes.rb"
       
-      # Read the current routes file
-      current_routes = File.read(routes_path)
+      # Create a fresh routes file with proper structure
+      routes = ["Rails.application.routes.draw do"]
       
-      # Find the Rails.application.routes.draw block
-      routes_block_match = current_routes.match(/Rails\.application\.routes\.draw do\s*\n(.*?)\nend/m)
-      
-      if routes_block_match
-        # Extract the current routes content
-        routes_content = routes_block_match[1]
-        
-        # Generate new routes for each model
-        new_routes = generate_routes_for_models
-        
-        # Check if the routes already exist
-        new_routes.each do |route|
-          unless routes_content.include?(route.strip)
-            routes_content += "  #{route}\n"
-          end
-        end
-        
-        # Replace the routes block with the updated content
-        updated_routes = current_routes.sub(
-          /Rails\.application\.routes\.draw do\s*\n.*?\nend/m,
-          "Rails.application.routes.draw do\n#{routes_content}\nend"
-        )
-        
-        # Write the updated routes back to the file
-        File.write(routes_path, updated_routes)
-        
-        puts "Updated routes in config/routes.rb"
-      else
-        puts "Could not find the routes block in config/routes.rb"
+      # Generate standalone resources first
+      standalone_resources = @models.reject { |m| find_nested_resources(m).any? }
+      standalone_resources.each do |model|
+        routes.concat(generate_routes_for_model(model).map { |r| "  #{r}" })
       end
+      
+      # Generate nested resources
+      processed = Set.new
+      @models.each do |model|
+        next if processed.include?(model.name.to_s)
+        
+        nested_resources = find_nested_resources(model)
+        next unless nested_resources.any?
+        
+        nested_resources.each do |parent|
+          next if processed.include?(parent.name.to_s)
+          
+          # Generate parent resource with its nested resources
+          parent_routes = generate_standalone_resource(parent)
+          child_routes = ["    resources :#{model.name.to_s.pluralize}"]
+          
+          routes << "  resources :#{parent.name.to_s.pluralize} do"
+          routes.concat(parent_routes.map { |r| "    #{r}" })
+          routes.concat(child_routes)
+          routes << "  end"
+          
+          processed.add(parent.name.to_s)
+          processed.add(model.name.to_s)
+        end
+      end
+      
+      # Add root route
+      if root = determine_root_route
+        routes << "  #{root}"
+      end
+      
+      routes << "end"
+      
+      # Write routes file
+      File.write(routes_path, routes.join("\n") + "\n")
+      log_info("Generated routes in config/routes.rb")
+      
+      # Print the generated routes for debugging
+      log_info("Generated routes content:")
+      log_info(routes.join("\n"))
     end
     
     def generate_routes_for_models
